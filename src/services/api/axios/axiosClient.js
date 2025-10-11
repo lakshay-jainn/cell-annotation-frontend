@@ -2,7 +2,7 @@ import axios from "axios";
 import { logout } from "./authBridge";
 
 const axiosClient = axios.create({
-  baseURL: "http://localhost:8000/api/v1",
+  baseURL: "http://54.197.100.41:8000/api/v1",
   timeout: 120000, // 120 second timeout (increased for image processing APIs)
 });
 
