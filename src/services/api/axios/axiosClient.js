@@ -7,8 +7,16 @@ const axiosClient = axios.create({
 });
 
 axiosClient.interceptors.request.use((config) => {
+  // Skip adding Authorization header for S3 URLs (they use pre-signed URLs)
+  const isS3Request =
+    config.url &&
+    (config.url.includes("amazonaws.com") ||
+      config.url.includes("s3.") ||
+      (config.url.startsWith("https://") &&
+        !config.url.includes(axiosClient.defaults.baseURL)));
+
   const token = localStorage.getItem("token");
-  if (token) {
+  if (token && !isS3Request) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
