@@ -37,7 +37,6 @@ export default function PointAnnotator() {
   const [imgSize, setImgSize] = useState([0, 0]); // [height, width]
 
   const [showImageQualityCheck, setShowImageQualityCheck] = useState(false);
-  const [imageQualityChecked, setImageQualityChecked] = useState(false);
 
   const [selectedCellType, setSelectedCellType] = useState("");
   const [cellTypeOther, setCellTypeOther] = useState("");
@@ -62,7 +61,6 @@ export default function PointAnnotator() {
   const [pointSize, setPointSize] = useState(4);
   const [pointColor, setPointColor] = useState("#f59e0b");
   const [loadingAutoSelect, setLoadingAutoSelect] = useState(false);
-  const [imageOrientation, setImageOrientation] = useState("portrait"); // "portrait" or "landscape"
 
   const cellTypeOptions = CELL_TYPES;
 
@@ -255,7 +253,6 @@ export default function PointAnnotator() {
       setPan([0, 0]);
 
       setShowImageQualityCheck(true);
-      setImageQualityChecked(false);
 
       console.log(" Slide data loaded successfully");
     } catch (error) {
@@ -263,7 +260,6 @@ export default function PointAnnotator() {
         // No more slides - all completed
         setAllSlidesCompleted(true);
         setShowImageQualityCheck(false);
-        setImageQualityChecked(false);
       } else {
         console.error(" Failed to load slide data:", error);
         toast.error("Failed to load slide data. Please try again.");
@@ -312,7 +308,6 @@ export default function PointAnnotator() {
       }
     } else {
       setShowImageQualityCheck(false);
-      setImageQualityChecked(true);
     }
   };
 
@@ -1036,58 +1031,24 @@ export default function PointAnnotator() {
           <div className="absolute inset-0 flex items-center justify-center overflow-hidden rounded-lg">
             {!imageUrl && <div className="text-gray-500">Loading image...</div>}
             {imageUrl && (
-              <>
-                {/* Orientation Helper Note */}
-                <div className="absolute top-4 left-4 right-4 z-10 bg-amber-50 border border-amber-200 rounded-lg p-3 shadow-sm">
-                  <p className="text-sm text-amber-800 mb-2">
-                    ℹ️ <strong>Note:</strong> If cell dots are misaligned with
-                    the image, try changing the orientation below.
-                  </p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setImageOrientation("portrait")}
-                      className={`px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${
-                        imageOrientation === "portrait"
-                          ? "bg-amber-600 text-white"
-                          : "bg-white text-amber-800 border border-amber-300 hover:bg-amber-100"
-                      }`}
-                    >
-                      Portrait
-                    </button>
-                    <button
-                      onClick={() => setImageOrientation("landscape")}
-                      className={`px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${
-                        imageOrientation === "landscape"
-                          ? "bg-amber-600 text-white"
-                          : "bg-white text-amber-800 border border-amber-300 hover:bg-amber-100"
-                      }`}
-                    >
-                      Landscape (Rotated 270°)
-                    </button>
-                  </div>
-                </div>
-
-                <AnnotationView
-                  imageUrl={imageUrl}
-                  imgSize={imgSize}
-                  getTransform={getTransform}
-                  onSvgClick={onSvgClick}
-                  onMouseDown={onMouseDown}
-                  onMouseMove={onMouseMove}
-                  onMouseUp={onMouseUp}
-                  svgRef={svgRef}
-                  panningRef={panningRef}
-                  cellPredictions={cellPredictions}
-                  selectedCells={selectedCells}
-                  annotatedCells={annotatedCells}
-                  toggleSelectCell={toggleSelectCell}
-                  pointSize={pointSize}
-                  pointColor={pointColor}
-                  annotatedPoints={annotatedPoints}
-                  imageOrientation={imageOrientation}
-                  imageQualityChecked={imageQualityChecked}
-                />
-              </>
+              <AnnotationView
+                imageUrl={imageUrl}
+                imgSize={imgSize}
+                getTransform={getTransform}
+                onSvgClick={onSvgClick}
+                onMouseDown={onMouseDown}
+                onMouseMove={onMouseMove}
+                onMouseUp={onMouseUp}
+                svgRef={svgRef}
+                panningRef={panningRef}
+                cellPredictions={cellPredictions}
+                selectedCells={selectedCells}
+                annotatedCells={annotatedCells}
+                toggleSelectCell={toggleSelectCell}
+                pointSize={pointSize}
+                pointColor={pointColor}
+                annotatedPoints={annotatedPoints}
+              />
             )}
           </div>
         </div>
@@ -1099,17 +1060,15 @@ export default function PointAnnotator() {
             <CellStateLegend />
 
             {/* Cell Type Annotation */}
-            {imageQualityChecked && (
-              <CellTypeAnnotation
-                selectedCells={selectedCells}
-                selectedCellType={selectedCellType}
-                setSelectedCellType={setSelectedCellType}
-                cellTypeOther={cellTypeOther}
-                setCellTypeOther={setCellTypeOther}
-                saveAnnotation={saveAnnotation}
-                cellTypeOptions={cellTypeOptions}
-              />
-            )}
+            <CellTypeAnnotation
+              selectedCells={selectedCells}
+              selectedCellType={selectedCellType}
+              setSelectedCellType={setSelectedCellType}
+              cellTypeOther={cellTypeOther}
+              setCellTypeOther={setCellTypeOther}
+              saveAnnotation={saveAnnotation}
+              cellTypeOptions={cellTypeOptions}
+            />
 
             <AnnotatedCellsList
               cellTypeCounts={cellTypeCounts}
@@ -1118,66 +1077,54 @@ export default function PointAnnotator() {
             />
 
             {/* Actions */}
-            {imageQualityChecked && (
-              <AnnotationActions
-                selectedCells={selectedCells}
-                loadingAutoSelect={loadingAutoSelect}
-                runAutoSelectCumulative={() =>
-                  runDynamicCellDetection("cumulative")
-                }
-                undoLast={undoLast}
-                clearAll={clearAll}
-                strictness={strictness}
-                setStrictness={setStrictness}
-              />
-            )}
+            <AnnotationActions
+              selectedCells={selectedCells}
+              loadingAutoSelect={loadingAutoSelect}
+              runAutoSelectCumulative={() =>
+                runDynamicCellDetection("cumulative")
+              }
+              undoLast={undoLast}
+              clearAll={clearAll}
+              strictness={strictness}
+              setStrictness={setStrictness}
+            />
 
             {/* Assessment Section - Replace with Next Slide button */}
-            {imageQualityChecked && (
-              <div className="bg-white p-4 rounded-lg border border-gray-200">
-                <h3 className="font-medium text-gray-900 mb-3">
-                  Slide Actions
-                </h3>
-                <button
-                  onClick={handleFinalSubmit}
-                  disabled={annotatedCells.length === 0}
-                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm mb-2"
-                >
-                  Save & Next Slide
-                </button>
-                <p className="text-xs text-gray-500 text-center">
-                  Annotation will be saved and you'll move to the next slide
-                </p>
-              </div>
-            )}
+            <div className="bg-white p-4 rounded-lg border border-gray-200">
+              <h3 className="font-medium text-gray-900 mb-3">Slide Actions</h3>
+              <button
+                onClick={handleFinalSubmit}
+                disabled={annotatedCells.length === 0}
+                className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm mb-2"
+              >
+                Save & Next Slide
+              </button>
+              <p className="text-xs text-gray-500 text-center">
+                Annotation will be saved and you'll move to the next slide
+              </p>
+            </div>
 
             {/* Zoom controls */}
-            {imageQualityChecked && (
-              <ZoomControls
-                zoom={zoom}
-                zoomByFactor={zoomByFactor}
-                fitToScreen={fitToScreen}
-              />
-            )}
+            <ZoomControls
+              zoom={zoom}
+              zoomByFactor={zoomByFactor}
+              fitToScreen={fitToScreen}
+            />
 
             {/* Point appearance */}
-            {imageQualityChecked && (
-              <AppearanceControls
-                pointSize={pointSize}
-                setPointSize={setPointSize}
-                pointColor={pointColor}
-                setPointColor={setPointColor}
-              />
-            )}
+            <AppearanceControls
+              pointSize={pointSize}
+              setPointSize={setPointSize}
+              pointColor={pointColor}
+              setPointColor={setPointColor}
+            />
 
             {/* Statistics */}
-            {imageQualityChecked && (
-              <StatisticsPanel
-                cellPredictions={cellPredictions}
-                selectedCells={selectedCells}
-                annotatedCells={annotatedCells}
-              />
-            )}
+            <StatisticsPanel
+              cellPredictions={cellPredictions}
+              selectedCells={selectedCells}
+              annotatedCells={annotatedCells}
+            />
           </div>
         </div>
       </div>
