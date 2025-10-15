@@ -7,6 +7,8 @@ const ImageCapture = ({ sampleData, onNewSlide, onNewNode, onNewPatient }) => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [uploadComplete, setUploadComplete] = useState(false);
+  const [uploadResponse, setUploadResponse] = useState(null);
+  const [showFinishModal, setShowFinishModal] = useState(false);
   const fileInputRef = useRef(null);
 
   const handleFileSelect = (e) => {
@@ -57,6 +59,7 @@ const ImageCapture = ({ sampleData, onNewSlide, onNewNode, onNewPatient }) => {
       );
 
       toast.success("Image uploaded successfully!");
+      setUploadResponse(response?.data ?? null);
       setUploadComplete(true);
     } catch (error) {
       console.error("Upload error:", error);
@@ -98,6 +101,99 @@ const ImageCapture = ({ sampleData, onNewSlide, onNewNode, onNewPatient }) => {
             </p>
           </div>
         </div>
+        {showFinishModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl p-6 mx-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-2xl font-semibold text-slate-800 mb-2">
+                    Upload Confirmation
+                  </h2>
+                  <p className="text-slate-600 mb-4">
+                    Image uploaded successfully. Below is the summary and
+                    metadata for the upload.
+                  </p>
+                </div>
+                <button
+                  aria-label="Close"
+                  onClick={() => setShowFinishModal(false)}
+                  className="text-slate-500 hover:text-slate-700"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-slate-700">
+                <div>
+                  <p className="mb-1">
+                    <strong>File Name:</strong> {selectedFile?.name}
+                  </p>
+                  <p className="mb-1">
+                    <strong>File Size:</strong>{" "}
+                    {selectedFile
+                      ? `${(selectedFile.size / 1024 / 1024).toFixed(2)} MB`
+                      : "-"}
+                  </p>
+                  <p className="mb-1">
+                    <strong>Patient ID:</strong> {sampleData.patientId}
+                  </p>
+                  <p className="mb-1">
+                    <strong>Lymph Node Station:</strong>{" "}
+                    {sampleData.lymphNodeStation}
+                  </p>
+                  <p className="mb-1">
+                    <strong>Sample Type:</strong> {sampleData.sampleType}
+                  </p>
+                </div>
+                <div>
+                  <p className="mb-1">
+                    <strong>Needle Size:</strong> {sampleData.needleSize ?? "-"}
+                  </p>
+                  <p className="mb-1">
+                    <strong>Microscope:</strong> {sampleData.microscope ?? "-"}
+                  </p>
+                  <p className="mb-1">
+                    <strong>Magnification:</strong>{" "}
+                    {sampleData.magnification ?? "-"}
+                  </p>
+                  <p className="mb-1">
+                    <strong>Stain:</strong> {sampleData.stain ?? "-"}
+                  </p>
+                  <p className="mb-1">
+                    <strong>Camera:</strong> {sampleData.camera ?? "-"}
+                  </p>
+                </div>
+              </div>
+
+              {uploadResponse && (
+                <div className="mt-4 bg-slate-50 p-3 rounded border border-slate-200 text-sm">
+                  <h4 className="font-semibold mb-2">Server Response</h4>
+                  <pre className="whitespace-pre-wrap text-xs text-slate-600">
+                    {JSON.stringify(uploadResponse, null, 2)}
+                  </pre>
+                </div>
+              )}
+
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  onClick={() => setShowFinishModal(false)}
+                  className="bg-gray-100 hover:bg-gray-200 text-slate-700 font-semibold py-2 px-4 rounded"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={() => {
+                    resetFileInput();
+                    setShowFinishModal(false);
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="mb-8">
           <div className="mb-4">
@@ -217,12 +313,12 @@ const ImageCapture = ({ sampleData, onNewSlide, onNewNode, onNewPatient }) => {
                 </button>
                 <button
                   onClick={() => {
-                    onNewPatient();
-                    resetFileInput();
+                    // open finish confirmation modal
+                    setShowFinishModal(true);
                   }}
                   className="bg-red-200 border-1 border-red-600 cursor-pointer hover:bg-red-300 text-red-600 font-semibold py-3 px-6 rounded-lg transition-colors"
                 >
-                  Exit
+                  Finish
                 </button>
               </div>
             </div>
