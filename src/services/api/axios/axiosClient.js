@@ -2,7 +2,7 @@ import axios from "axios";
 import { logout } from "./authBridge";
 
 const axiosClient = axios.create({
-  baseURL: "https://www.psg-ebus.work.gd/api/v1",
+  baseURL: "/api/v1",
   timeout: 120000, // 120 second timeout (increased for image processing APIs)
 });
 
