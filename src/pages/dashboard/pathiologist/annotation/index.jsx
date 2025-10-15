@@ -242,48 +242,7 @@ export default function PointAnnotator() {
 
       const [imgHeight, imgWidth] = await imageLoadPromise;
 
-      // Calculate coordinate scaling factors
-      // CSV coordinates may be based on a different image resolution
-      if (predictions.length > 0) {
-        const allPolyX = predictions.flatMap((p) => p.poly_x || []);
-        const allPolyY = predictions.flatMap((p) => p.poly_y || []);
-
-        if (allPolyX.length > 0 && allPolyY.length > 0) {
-          const maxX = Math.max(...allPolyX);
-          const maxY = Math.max(...allPolyY);
-
-          const scaleX = imgWidth / maxX;
-          const scaleY = imgHeight / maxY;
-
-          console.log("📏 Coordinate scaling:", {
-            imgWidth,
-            imgHeight,
-            maxX,
-            maxY,
-            scaleX,
-            scaleY,
-          });
-
-          // Apply scaling to all predictions
-          predictions.forEach((pred) => {
-            pred.x0 *= scaleX;
-            pred.y0 *= scaleY;
-            pred.x1 *= scaleX;
-            pred.y1 *= scaleY;
-
-            if (pred.poly_x && pred.poly_y) {
-              pred.poly_x = pred.poly_x.map((x) => x * scaleX);
-              pred.poly_y = pred.poly_y.map((y) => y * scaleY);
-            }
-
-            if (pred.centroid) {
-              pred.centroid.x *= scaleX;
-              pred.centroid.y *= scaleY;
-            }
-          });
-        }
-      }
-
+      // No scaling - use raw coordinates from CSV
       setImageUrl(slideData.image.url);
       setCellPredictions(predictions);
       setImgSize([imgHeight, imgWidth]);
@@ -1126,6 +1085,7 @@ export default function PointAnnotator() {
                   pointColor={pointColor}
                   annotatedPoints={annotatedPoints}
                   imageOrientation={imageOrientation}
+                  imageQualityChecked={imageQualityChecked}
                 />
               </>
             )}
