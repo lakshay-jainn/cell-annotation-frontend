@@ -15,10 +15,16 @@ const AnnotationView = ({
   pointSize,
   pointColor,
   annotatedPoints,
+  imageOrientation = "portrait",
 }) => {
   if (!imageUrl || !imgSize[0] || !imgSize[1]) return null;
 
   const { scale, offsetX, offsetY } = getTransform();
+
+  // Determine if we need to rotate 270° (landscape mode)
+  const needsRotation = imageOrientation === "landscape";
+  const displayWidth = needsRotation ? imgSize[0] : imgSize[1];
+  const displayHeight = needsRotation ? imgSize[1] : imgSize[0];
 
   return (
     <svg
@@ -36,15 +42,21 @@ const AnnotationView = ({
     >
       <rect x="0" y="0" width="100%" height="100%" fill="transparent" />
       <g transform={`translate(${offsetX},${offsetY}) scale(${scale})`}>
-        {/* Image */}
-        <image
-          href={imageUrl}
-          x={0}
-          y={0}
-          width={imgSize[1]}
-          height={imgSize[0]}
-          preserveAspectRatio="xMinYMin meet"
-        />
+        {/* Image with optional rotation */}
+        <g
+          transform={
+            needsRotation ? `translate(0, ${displayHeight}) rotate(-90)` : ""
+          }
+        >
+          <image
+            href={imageUrl}
+            x={0}
+            y={0}
+            width={imgSize[1]}
+            height={imgSize[0]}
+            preserveAspectRatio="none"
+          />
+        </g>
 
         {/* Clickable areas, centroid dots, and boundary when selected */}
         {cellPredictions.map((cell, index) => {
@@ -61,6 +73,8 @@ const AnnotationView = ({
             cell.poly_x.length &&
             cell.poly_x.length === cell.poly_y.length
           ) {
+            // poly_x = X coordinates (horizontal), poly_y = Y coordinates (vertical)
+            // SVG format: "x,y x,y x,y"
             const pts = cell.poly_x.map((px, i) => `${px},${cell.poly_y[i]}`);
             polyPoints = pts.join(" ");
           }

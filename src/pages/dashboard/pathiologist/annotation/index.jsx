@@ -62,6 +62,7 @@ export default function PointAnnotator() {
   const [pointSize, setPointSize] = useState(4);
   const [pointColor, setPointColor] = useState("#f59e0b");
   const [loadingAutoSelect, setLoadingAutoSelect] = useState(false);
+  const [imageOrientation, setImageOrientation] = useState("portrait"); // "portrait" or "landscape"
 
   const cellTypeOptions = CELL_TYPES;
 
@@ -240,6 +241,48 @@ export default function PointAnnotator() {
       }
 
       const [imgHeight, imgWidth] = await imageLoadPromise;
+
+      // Calculate coordinate scaling factors
+      // CSV coordinates may be based on a different image resolution
+      if (predictions.length > 0) {
+        const allPolyX = predictions.flatMap((p) => p.poly_x || []);
+        const allPolyY = predictions.flatMap((p) => p.poly_y || []);
+
+        if (allPolyX.length > 0 && allPolyY.length > 0) {
+          const maxX = Math.max(...allPolyX);
+          const maxY = Math.max(...allPolyY);
+
+          const scaleX = imgWidth / maxX;
+          const scaleY = imgHeight / maxY;
+
+          console.log("📏 Coordinate scaling:", {
+            imgWidth,
+            imgHeight,
+            maxX,
+            maxY,
+            scaleX,
+            scaleY,
+          });
+
+          // Apply scaling to all predictions
+          predictions.forEach((pred) => {
+            pred.x0 *= scaleX;
+            pred.y0 *= scaleY;
+            pred.x1 *= scaleX;
+            pred.y1 *= scaleY;
+
+            if (pred.poly_x && pred.poly_y) {
+              pred.poly_x = pred.poly_x.map((x) => x * scaleX);
+              pred.poly_y = pred.poly_y.map((y) => y * scaleY);
+            }
+
+            if (pred.centroid) {
+              pred.centroid.x *= scaleX;
+              pred.centroid.y *= scaleY;
+            }
+          });
+        }
+      }
 
       setImageUrl(slideData.image.url);
       setCellPredictions(predictions);
@@ -1034,24 +1077,57 @@ export default function PointAnnotator() {
           <div className="absolute inset-0 flex items-center justify-center overflow-hidden rounded-lg">
             {!imageUrl && <div className="text-gray-500">Loading image...</div>}
             {imageUrl && (
-              <AnnotationView
-                imageUrl={imageUrl}
-                imgSize={imgSize}
-                getTransform={getTransform}
-                onSvgClick={onSvgClick}
-                onMouseDown={onMouseDown}
-                onMouseMove={onMouseMove}
-                onMouseUp={onMouseUp}
-                svgRef={svgRef}
-                panningRef={panningRef}
-                cellPredictions={cellPredictions}
-                selectedCells={selectedCells}
-                annotatedCells={annotatedCells}
-                toggleSelectCell={toggleSelectCell}
-                pointSize={pointSize}
-                pointColor={pointColor}
-                annotatedPoints={annotatedPoints}
-              />
+              <>
+                {/* Orientation Helper Note */}
+                <div className="absolute top-4 left-4 right-4 z-10 bg-amber-50 border border-amber-200 rounded-lg p-3 shadow-sm">
+                  <p className="text-sm text-amber-800 mb-2">
+                    ℹ️ <strong>Note:</strong> If cell dots are misaligned with
+                    the image, try changing the orientation below.
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setImageOrientation("portrait")}
+                      className={`px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${
+                        imageOrientation === "portrait"
+                          ? "bg-amber-600 text-white"
+                          : "bg-white text-amber-800 border border-amber-300 hover:bg-amber-100"
+                      }`}
+                    >
+                      Portrait
+                    </button>
+                    <button
+                      onClick={() => setImageOrientation("landscape")}
+                      className={`px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${
+                        imageOrientation === "landscape"
+                          ? "bg-amber-600 text-white"
+                          : "bg-white text-amber-800 border border-amber-300 hover:bg-amber-100"
+                      }`}
+                    >
+                      Landscape (Rotated 270°)
+                    </button>
+                  </div>
+                </div>
+
+                <AnnotationView
+                  imageUrl={imageUrl}
+                  imgSize={imgSize}
+                  getTransform={getTransform}
+                  onSvgClick={onSvgClick}
+                  onMouseDown={onMouseDown}
+                  onMouseMove={onMouseMove}
+                  onMouseUp={onMouseUp}
+                  svgRef={svgRef}
+                  panningRef={panningRef}
+                  cellPredictions={cellPredictions}
+                  selectedCells={selectedCells}
+                  annotatedCells={annotatedCells}
+                  toggleSelectCell={toggleSelectCell}
+                  pointSize={pointSize}
+                  pointColor={pointColor}
+                  annotatedPoints={annotatedPoints}
+                  imageOrientation={imageOrientation}
+                />
+              </>
             )}
           </div>
         </div>
