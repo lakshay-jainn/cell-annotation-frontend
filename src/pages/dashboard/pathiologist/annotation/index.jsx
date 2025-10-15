@@ -616,6 +616,11 @@ export default function PointAnnotator() {
           dynamicTyping: true,
         }).data;
 
+        // Get set of already annotated cell indices to exclude them from results
+        const annotatedCellIndices = new Set(
+          annotatedCells.map((a) => a.cellIndex)
+        );
+
         // Add the new polygons to the existing annotations
         const newPoints = [...annotatedPoints];
         const newAutoSelected = new Set(autoSelectedCells);
@@ -676,6 +681,11 @@ export default function PointAnnotator() {
             }
           }
           if (isDuplicate) return;
+
+          // Skip if this cell is already annotated (disabled)
+          if (cellIndex !== null && annotatedCellIndices.has(cellIndex)) {
+            return;
+          }
 
           // Add the new point (but mark cellIndex if matched)
           newPoints.push({
