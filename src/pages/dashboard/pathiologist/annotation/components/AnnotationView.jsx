@@ -43,7 +43,7 @@ const AnnotationView = ({
           y={0}
           width={imgSize[1]}
           height={imgSize[0]}
-          preserveAspectRatio="none"
+          preserveAspectRatio="xMinYMin meet"
         />
 
         {/* Clickable areas, centroid dots, and boundary when selected */}
