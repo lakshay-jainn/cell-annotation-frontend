@@ -165,14 +165,14 @@ const ImageCapture = ({ sampleData, onNewSlide, onNewNode, onNewPatient }) => {
                 </div>
               </div>
 
-              {uploadResponse && (
+              {/* {uploadResponse && (
                 <div className="mt-4 bg-slate-50 p-3 rounded border border-slate-200 text-sm">
                   <h4 className="font-semibold mb-2">Server Response</h4>
                   <pre className="whitespace-pre-wrap text-xs text-slate-600">
                     {JSON.stringify(uploadResponse, null, 2)}
                   </pre>
                 </div>
-              )}
+              )} */}
 
               <div className="mt-6 flex justify-end gap-3">
                 <button
@@ -183,8 +183,12 @@ const ImageCapture = ({ sampleData, onNewSlide, onNewNode, onNewPatient }) => {
                 </button>
                 <button
                   onClick={() => {
+                    // Clear local upload state and navigate back to patient ID entry
                     resetFileInput();
+                    setUploadComplete(false);
+                    setUploadResponse(null);
                     setShowFinishModal(false);
+                    onNewPatient();
                   }}
                   className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded"
                 >
