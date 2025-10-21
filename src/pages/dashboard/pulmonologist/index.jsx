@@ -1,75 +1,10 @@
-import { useState } from "react";
-import PatientIdentifier from "./components/PatientIdentifier";
-import SampleDetails from "./components/SampleDetails";
-import ImageCapture from "./components/ImageCapture";
+import { Outlet } from "react-router-dom";
+import NavBar from "./components/NavBar.jsx";
 import useGlobalAuth from "../../../hooks/useAuth";
 import PageHeader from "../../../components/ui/PageHeader.jsx";
 import UserInfoCard from "../../../components/ui/UserInfoCard.jsx";
-import ProgressSteps from "../../../components/ui/ProgressSteps.jsx";
-
 export default function PulmogolistPage() {
-  const [currentStep, setCurrentStep] = useState("patient");
   const { name, hospital, location, Logout } = useGlobalAuth();
-  const [sampleData, setSampleData] = useState({
-    patientId: "",
-    lymphNodeStation: "",
-    needleSize: "",
-    sampleType: "",
-    microscope: "",
-    magnification: "",
-    stain: "",
-    camera: "",
-  });
-
-  const steps = [
-    { key: "patient", label: "Patient ID" },
-    { key: "details", label: "Sample Details" },
-    { key: "capture", label: "Image Capture" },
-  ];
-
-  const handlePatientSubmit = (patientId) => {
-    setSampleData((prev) => ({ ...prev, patientId }));
-    setCurrentStep("details");
-  };
-
-  const handleDetailsSubmit = (details) => {
-    setSampleData((prev) => ({ ...prev, ...details }));
-    setCurrentStep("capture");
-  };
-
-  const handleNewSlide = () => {
-    setCurrentStep("capture");
-  };
-
-  const handleNewNode = () => {
-    setSampleData((prev) => ({
-      ...prev,
-      lymphNodeStation: "",
-      needleSize: "",
-      sampleType: "",
-      microscope: "",
-      customMicroscope: "",
-      magnification: "",
-      stain: "",
-      camera: "",
-      customCamera: "",
-    }));
-    setCurrentStep("details");
-  };
-
-  const handleNewPatient = () => {
-    setSampleData({
-      patientId: "",
-      lymphNodeStation: "",
-      needleSize: "",
-      sampleType: "",
-      microscope: "",
-      magnification: "",
-      stain: "",
-      camera: "",
-    });
-    setCurrentStep("patient");
-  };
 
   return (
     <div className="min-h-screen overflow-x-hidden flex flex-col bg-slate-50">
@@ -81,17 +16,17 @@ export default function PulmogolistPage() {
       />
 
       <main className="flex-1 max-w-6xl mx-auto p-8 w-full">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 justify-center">
           <UserInfoCard
             name={name}
             hospital={hospital}
             location={location}
             accentColor="blue"
           />
-          <div className="flex justify-center sm:justify-end">
+          <div className="flex flex-col items-center sm:items-end gap-5 h-max">
             <button
               onClick={Logout}
-              className="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
+              className="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex gap-2 w-max"
             >
               <svg
                 className="w-4 h-4"
@@ -108,31 +43,10 @@ export default function PulmogolistPage() {
               </svg>
               Logout
             </button>
+            <NavBar />
           </div>
         </div>
-
-        <ProgressSteps currentStep={currentStep} steps={steps} />
-
-        {currentStep === "patient" && (
-          <PatientIdentifier onSubmit={handlePatientSubmit} />
-        )}
-
-        {currentStep === "details" && (
-          <SampleDetails
-            patientId={sampleData.patientId}
-            onSubmit={handleDetailsSubmit}
-            onBack={() => setCurrentStep("patient")}
-          />
-        )}
-
-        {currentStep === "capture" && (
-          <ImageCapture
-            sampleData={sampleData}
-            onNewSlide={handleNewSlide}
-            onNewNode={handleNewNode}
-            onNewPatient={handleNewPatient}
-          />
-        )}
+        <Outlet />
       </main>
     </div>
   );

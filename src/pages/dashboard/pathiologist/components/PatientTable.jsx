@@ -119,7 +119,7 @@ const PatientTable = ({ patients, loading, onPatientClick }) => {
                         : "text-blue-600"
                     }`}
                   >
-                    {patient.user_typed_id}
+                    {`...${patient.patient_id.slice(-5)}`}
                   </div>
                 </div>
               </td>

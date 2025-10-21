@@ -1,10 +1,11 @@
-import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { Toaster } from "react-hot-toast";
 import "./styles/globals.css";
 import { USER_ROLES, ROUTES } from "./utils/constants";
-import PulmogolistPage from "./pages/dashboard/pulmonologist";
+import UploadSteps from "./pages/dashboard/pulmonologist/components/UploadSteps.jsx";
+import { Navigate } from "react-router-dom";
 import PathiologistPage from "./pages/dashboard/pathiologist";
+import PulmogolistPage from "./pages/dashboard/pulmonologist/index.jsx";
 import HomePage from "./pages/auth/home";
 import LoginPage from "./pages/auth/login";
 import RegisterPage from "./pages/auth/register";
@@ -20,7 +21,7 @@ import AuthProvider from "./context/AuthContext";
 import UnprotectedRoute from "./components/auth/UnprotectedRoute.jsx";
 import ProtectedRoute from "./components/auth/ProtectedRoute.jsx";
 import AnnotationPage from "./pages/dashboard/pathiologist/annotation";
-
+import Patients from "./pages/dashboard/pulmonologist/components/Patients.jsx";
 const router = createBrowserRouter(
   createRoutesFromElements(
     <>
@@ -39,7 +40,11 @@ const router = createBrowserRouter(
           />
         }
       >
-        <Route path="pulmonologist" element={<PulmogolistPage />}></Route>
+        <Route path="pulmonologist" element={<PulmogolistPage />}>
+          <Route index element={<Navigate to="upload" replace />} />
+          <Route path="upload" element={<UploadSteps />} />
+          <Route path="patients" element={<Patients />} />
+        </Route>
       </Route>
 
       <Route
