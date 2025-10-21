@@ -12,7 +12,9 @@ export default function useFetchPatientsPulmo(currentPage) {
     const fetchPatients = async (page) => {
       try {
         setLoading(true);
-        const response = await axiosClient.get(`/pulmo/patients?page=${page}`);
+        const response = await axiosClient.get(
+          `/pulmo/patients?page=${page}&per_page=10`
+        );
         console.log(response);
         const data = response.data;
 
