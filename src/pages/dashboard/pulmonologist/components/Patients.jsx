@@ -11,9 +11,13 @@ export default function Patients() {
     setDownloading((prev) => new Set(prev).add(patient.patient_id));
     try {
       const url = await downloadPulmoReport(patient.patient_id);
+
       if (url) {
-        // Open in new tab or trigger download
-        window.open(url, "_blank");
+        const link = document.createElement("a");
+        link.href = url;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
       } else {
         toast.error("No download URL received.");
       }
