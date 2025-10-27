@@ -52,7 +52,7 @@ export default function PatientTable({
                   key={patient.user_typed_id}
                   className="hover:bg-slate-50 transition-colors"
                 >
-                  <td className="px-6 py-4 text-center border-b border-slate-200 text-sm font-medium text-blue-700 break-words max-w-xs">
+                  <td className="px-6 py-4 text-center border-b border-slate-200 text-sm font-medium text-blue-700 break-all max-w-xs">
                     {patient.user_typed_id}
                   </td>
                   <td className="px-6 py-4 text-center border-b border-slate-200 text-sm text-slate-900">

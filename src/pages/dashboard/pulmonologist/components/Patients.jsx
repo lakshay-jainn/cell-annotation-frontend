@@ -102,9 +102,9 @@ export default function Patients() {
         onPageChange={handlePageChange}
       />
       {showForm && (
-        <div className="p-20 fixed inset-0 bg-transparent backdrop-blur-sm bg-opacity-60 flex items-center justify-center z-50">
+        <div className="p-5 fixed inset-0 bg-transparent backdrop-blur-sm bg-opacity-60 flex items-center justify-center z-50">
           <form
-            className="relative bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl border-2 border-blue-600 max-h-90"
+            className="relative bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl border-2 border-blue-600 max-h-92"
             onSubmit={handleFormSubmit}
           >
             <button
