@@ -1100,45 +1100,46 @@ export default function PointAnnotator() {
                   strictness={strictness}
                   setStrictness={setStrictness}
                 />
+                {/* Assessment Section - Replace with Next Slide button */}
+                <div className="bg-white p-4 rounded-lg border border-gray-200">
+                  <h3 className="font-medium text-gray-900 mb-3">
+                    Slide Actions
+                  </h3>
+                  <button
+                    onClick={handleFinalSubmit}
+                    disabled={annotatedCells.length === 0}
+                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm mb-2"
+                  >
+                    Save & Next Slide
+                  </button>
+                  <p className="text-xs text-gray-500 text-center">
+                    Annotation will be saved and you'll move to the next slide
+                  </p>
+                </div>
+
+                {/* Zoom controls */}
+                <ZoomControls
+                  zoom={zoom}
+                  zoomByFactor={zoomByFactor}
+                  fitToScreen={fitToScreen}
+                />
+
+                {/* Point appearance */}
+                <AppearanceControls
+                  pointSize={pointSize}
+                  setPointSize={setPointSize}
+                  pointColor={pointColor}
+                  setPointColor={setPointColor}
+                />
+
+                {/* Statistics */}
+                <StatisticsPanel
+                  cellPredictions={cellPredictions}
+                  selectedCells={selectedCells}
+                  annotatedCells={annotatedCells}
+                />
               </>
             )}
-
-            {/* Assessment Section - Replace with Next Slide button */}
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
-              <h3 className="font-medium text-gray-900 mb-3">Slide Actions</h3>
-              <button
-                onClick={handleFinalSubmit}
-                disabled={annotatedCells.length === 0}
-                className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm mb-2"
-              >
-                Save & Next Slide
-              </button>
-              <p className="text-xs text-gray-500 text-center">
-                Annotation will be saved and you'll move to the next slide
-              </p>
-            </div>
-
-            {/* Zoom controls */}
-            <ZoomControls
-              zoom={zoom}
-              zoomByFactor={zoomByFactor}
-              fitToScreen={fitToScreen}
-            />
-
-            {/* Point appearance */}
-            <AppearanceControls
-              pointSize={pointSize}
-              setPointSize={setPointSize}
-              pointColor={pointColor}
-              setPointColor={setPointColor}
-            />
-
-            {/* Statistics */}
-            <StatisticsPanel
-              cellPredictions={cellPredictions}
-              selectedCells={selectedCells}
-              annotatedCells={annotatedCells}
-            />
           </div>
         </div>
       </div>
