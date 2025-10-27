@@ -1066,39 +1066,41 @@ export default function PointAnnotator() {
         {/* Controls sidebar - Made scrollable with fixed height */}
         <div className="w-80 h-full overflow-y-auto">
           <div className="space-y-4 pb-4">
-            {/* Cell State Legend */}
-            <CellStateLegend />
-
-            {/* Cell Type Annotation */}
-            <CellTypeAnnotation
-              selectedCells={selectedCells}
-              selectedCellType={selectedCellType}
-              setSelectedCellType={setSelectedCellType}
-              cellTypeOther={cellTypeOther}
-              setCellTypeOther={setCellTypeOther}
-              saveAnnotation={saveAnnotation}
-              cellTypeOptions={cellTypeOptions}
-            />
-
-            <AnnotatedCellsList
-              cellTypeCounts={cellTypeCounts}
-              annotatedCells={annotatedCells}
-              removeAnnotation={removeAnnotation}
-            />
-
-            {/* Actions - Hidden when image quality check is visible */}
             {!showImageQualityCheck && (
-              <AnnotationActions
-                selectedCells={selectedCells}
-                loadingAutoSelect={loadingAutoSelect}
-                runAutoSelectCumulative={() =>
-                  runDynamicCellDetection("cumulative")
-                }
-                undoLast={undoLast}
-                clearAll={clearAll}
-                strictness={strictness}
-                setStrictness={setStrictness}
-              />
+              <>
+                {/* Cell State Legend */}
+                <CellStateLegend />
+
+                {/* Cell Type Annotation */}
+                <CellTypeAnnotation
+                  selectedCells={selectedCells}
+                  selectedCellType={selectedCellType}
+                  setSelectedCellType={setSelectedCellType}
+                  cellTypeOther={cellTypeOther}
+                  setCellTypeOther={setCellTypeOther}
+                  saveAnnotation={saveAnnotation}
+                  cellTypeOptions={cellTypeOptions}
+                />
+
+                <AnnotatedCellsList
+                  cellTypeCounts={cellTypeCounts}
+                  annotatedCells={annotatedCells}
+                  removeAnnotation={removeAnnotation}
+                />
+
+                {/* Actions - Hidden when image quality check is visible */}
+                <AnnotationActions
+                  selectedCells={selectedCells}
+                  loadingAutoSelect={loadingAutoSelect}
+                  runAutoSelectCumulative={() =>
+                    runDynamicCellDetection("cumulative")
+                  }
+                  undoLast={undoLast}
+                  clearAll={clearAll}
+                  strictness={strictness}
+                  setStrictness={setStrictness}
+                />
+              </>
             )}
 
             {/* Assessment Section - Replace with Next Slide button */}
