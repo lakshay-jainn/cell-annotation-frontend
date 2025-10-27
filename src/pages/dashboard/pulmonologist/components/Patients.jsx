@@ -35,7 +35,7 @@ export default function Patients() {
   const [patientsState, setPatientsState] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [formPatient, setFormPatient] = useState(null);
-  const [formFile, setFormFile] = useState(null);
+  const [formText, setFormText] = useState("");
   const [formLoading, setFormLoading] = useState(false);
 
   const { patients, totalPages, totalPatients, loading, error } =
@@ -54,16 +54,22 @@ export default function Patients() {
 
   const handleUploadReport = (patient) => {
     setFormPatient(patient);
-    setFormFile(null);
+    setFormText("");
     setShowForm(true);
   };
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
-    if (!formFile || !formPatient) return;
+    if (!formText.trim() || !formPatient) return;
     setFormLoading(true);
     try {
-      const data = await uploadPulmoReport(formPatient.patient_id, formFile);
+      // Convert text to a Blob (text file)
+      const blob = new Blob([formText], { type: "text/plain" });
+      const file = new File([blob], "clinical_notes.txt", {
+        type: "text/plain",
+      });
+
+      const data = await uploadPulmoReport(formPatient.patient_id, file);
       setPatientsState((prev) =>
         prev.map((p) =>
           p.patient_id === formPatient.patient_id
@@ -71,7 +77,7 @@ export default function Patients() {
             : p
         )
       );
-      toast.success("Report uploaded!");
+      toast.success("Clinical notes uploaded!");
       setShowForm(false);
     } catch (err) {
       toast.error(err?.response?.data?.message || "Upload failed");
@@ -98,7 +104,7 @@ export default function Patients() {
       {showForm && (
         <div className="fixed inset-0 bg-transparent backdrop-blur-sm bg-opacity-60 flex items-center justify-center z-50">
           <form
-            className="relative bg-white rounded-lg shadow-lg p-6 w-full max-w-md border-2 border-blue-600"
+            className="relative bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl border-2 border-blue-600 max-h-96 overflow-y-auto"
             onSubmit={handleFormSubmit}
           >
             <button
@@ -111,13 +117,13 @@ export default function Patients() {
               &times;
             </button>
             <h2 className="text-lg font-bold mb-4">
-              Upload Report for {formPatient?.user_typed_id}
+              Enter Clinical Notes for {formPatient?.user_typed_id}
             </h2>
-            <input
-              type="file"
-              accept=".pdf,.doc,.docx,.csv,.txt"
-              onChange={(e) => setFormFile(e.target.files[0])}
-              className="mb-4 block w-full border border-slate-300 rounded px-3 py-2"
+            <textarea
+              value={formText}
+              onChange={(e) => setFormText(e.target.value)}
+              placeholder="Enter your clinical notes here..."
+              className="mb-4 block w-full border border-slate-300 rounded px-3 py-2 h-64 resize-none overflow-y-auto"
               required
             />
             <div className="flex gap-2 justify-end">
@@ -132,7 +138,7 @@ export default function Patients() {
               <button
                 type="submit"
                 className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-semibold"
-                disabled={formLoading || !formFile}
+                disabled={formLoading || !formText.trim()}
               >
                 {formLoading ? "Uploading..." : "Upload"}
               </button>
