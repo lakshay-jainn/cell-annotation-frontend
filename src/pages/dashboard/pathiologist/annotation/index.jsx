@@ -1086,18 +1086,20 @@ export default function PointAnnotator() {
               removeAnnotation={removeAnnotation}
             />
 
-            {/* Actions */}
-            <AnnotationActions
-              selectedCells={selectedCells}
-              loadingAutoSelect={loadingAutoSelect}
-              runAutoSelectCumulative={() =>
-                runDynamicCellDetection("cumulative")
-              }
-              undoLast={undoLast}
-              clearAll={clearAll}
-              strictness={strictness}
-              setStrictness={setStrictness}
-            />
+            {/* Actions - Hidden when image quality check is visible */}
+            {!showImageQualityCheck && (
+              <AnnotationActions
+                selectedCells={selectedCells}
+                loadingAutoSelect={loadingAutoSelect}
+                runAutoSelectCumulative={() =>
+                  runDynamicCellDetection("cumulative")
+                }
+                undoLast={undoLast}
+                clearAll={clearAll}
+                strictness={strictness}
+                setStrictness={setStrictness}
+              />
+            )}
 
             {/* Assessment Section - Replace with Next Slide button */}
             <div className="bg-white p-4 rounded-lg border border-gray-200">
