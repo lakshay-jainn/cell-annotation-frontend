@@ -98,7 +98,7 @@ const AnnotationView = ({
                     ? "#008000" // Orange for selected cells
                     : "#ef4444" // Red for unselected cells
                 }
-                stroke="#008000"
+                stroke="#0f172a"
                 strokeWidth={0.8}
                 onClick={(e) => {
                   e.stopPropagation();

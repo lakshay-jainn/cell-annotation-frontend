@@ -59,7 +59,7 @@ export default function PointAnnotator() {
 
   // UI state
   const [pointSize, setPointSize] = useState(4);
-  const [pointColor, setPointColor] = useState("#f59e0b");
+  const [pointColor, setPointColor] = useState("#008000");
   const [loadingAutoSelect, setLoadingAutoSelect] = useState(false);
 
   const cellTypeOptions = CELL_TYPES;
