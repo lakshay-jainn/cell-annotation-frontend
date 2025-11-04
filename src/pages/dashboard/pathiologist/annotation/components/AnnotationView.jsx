@@ -95,7 +95,7 @@ const AnnotationView = ({
                   isAnnotated
                     ? "#9ca3af" // Gray for disabled/annotated cells
                     : isSelected
-                    ? "#fb923c" // Orange for selected cells
+                    ? "#008000" // Orange for selected cells
                     : "#ef4444" // Red for unselected cells
                 }
                 stroke="#0f172a"

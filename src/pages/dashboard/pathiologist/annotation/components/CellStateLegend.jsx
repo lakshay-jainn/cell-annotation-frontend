@@ -13,7 +13,7 @@ const CellStateLegend = () => {
 
         {/* Orange - Selected */}
         <div className="flex items-center gap-3">
-          <div className="w-4 h-4 rounded-full bg-orange-400 border border-gray-800"></div>
+          <div className="w-4 h-4 rounded-full bg-[#008000] border border-gray-800"></div>
           <span className="text-sm text-gray-600">Currently selected</span>
         </div>
 
