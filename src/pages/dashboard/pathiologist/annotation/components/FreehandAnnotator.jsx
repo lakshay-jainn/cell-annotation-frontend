@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 
 /**
  * FreehandAnnotator - True freehand drawing mode
@@ -18,9 +18,13 @@ export default function FreehandAnnotator({
 }) {
   const canvasRef = useRef(null);
   const imageRef = useRef(null);
-  const [strokes, setStrokes] = useState([]); // Array of completed stroke paths (each is a cell)
-  const [currentStroke, setCurrentStroke] = useState([]); // Current drawing in progress
-  const [isDrawing, setIsDrawing] = useState(false);
+  const strokesRef = useRef([]); // Use ref for strokes to avoid stale closures
+  const currentStrokeRef = useRef([]); // Use ref for current stroke
+  const isDrawingRef = useRef(false);
+  const animationFrameRef = useRef(null);
+
+  const [strokes, setStrokes] = useState([]); // For UI updates only
+  const [currentStroke, setCurrentStroke] = useState([]); // For UI updates only
 
   // Load and cache image once
   useEffect(() => {
@@ -31,14 +35,15 @@ export default function FreehandAnnotator({
       if (canvas) {
         canvas.width = img.width;
         canvas.height = img.height;
-        redrawCanvas(canvas, [], []);
+        redrawAll([], []);
       }
     };
     img.src = imgSrc;
   }, [imgSrc]);
 
-  // Redraw canvas with all strokes
-  const redrawCanvas = (canvas, allStrokes, currentDrawing) => {
+  // Redraw entire canvas
+  const redrawAll = useCallback((allStrokes, currentDrawing) => {
+    const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!imageRef.current) return;
@@ -46,7 +51,7 @@ export default function FreehandAnnotator({
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(imageRef.current, 0, 0);
 
-    // Draw completed strokes (each stroke is a separate cell)
+    // Draw completed strokes
     allStrokes.forEach((stroke, idx) => {
       if (stroke.length < 2) return;
       ctx.strokeStyle = "#ff6b6b";
@@ -59,7 +64,6 @@ export default function FreehandAnnotator({
       for (let i = 1; i < stroke.length; i++) {
         ctx.lineTo(stroke[i][0], stroke[i][1]);
       }
-      // Close each cell polygon
       ctx.lineTo(stroke[0][0], stroke[0][1]);
       ctx.stroke();
       ctx.fill();
@@ -91,10 +95,10 @@ export default function FreehandAnnotator({
       }
       ctx.stroke();
     }
-  };
+  }, []);
 
   // Get canvas coordinates from mouse event
-  const getCanvasCoords = (e) => {
+  const getCanvasCoords = useCallback((e) => {
     if (!canvasRef.current) return null;
     const rect = canvasRef.current.getBoundingClientRect();
     const scaleX = canvasRef.current.width / rect.width;
@@ -104,50 +108,68 @@ export default function FreehandAnnotator({
     const y = (e.clientY - rect.top) * scaleY;
 
     return [x, y];
-  };
+  }, []);
 
   // Start drawing
-  const handleMouseDown = (e) => {
-    setIsDrawing(true);
-    const coords = getCanvasCoords(e);
-    if (coords) {
-      setCurrentStroke([coords]);
-    }
-  };
+  const handleMouseDown = useCallback(
+    (e) => {
+      isDrawingRef.current = true;
+      const coords = getCanvasCoords(e);
+      if (coords) {
+        currentStrokeRef.current = [coords];
+        setCurrentStroke([coords]);
+      }
+    },
+    [getCanvasCoords]
+  );
 
-  // Continue drawing
-  const handleMouseMove = (e) => {
-    if (!isDrawing) return;
+  // Continue drawing - use requestAnimationFrame for smooth rendering
+  const handleMouseMove = useCallback(
+    (e) => {
+      if (!isDrawingRef.current) return;
 
-    const coords = getCanvasCoords(e);
-    if (!coords) return;
+      const coords = getCanvasCoords(e);
+      if (!coords) return;
 
-    setCurrentStroke((prev) => {
-      const updated = [...prev, coords];
-      redrawCanvas(canvasRef.current, strokes, updated);
-      return updated;
-    });
-  };
+      currentStrokeRef.current.push(coords);
+      setCurrentStroke((prev) => [...prev, coords]);
+
+      // Debounce redraws with requestAnimationFrame
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+
+      animationFrameRef.current = requestAnimationFrame(() => {
+        redrawAll(strokesRef.current, currentStrokeRef.current);
+      });
+    },
+    [getCanvasCoords, redrawAll]
+  );
 
   // Finish stroke - becomes a cell
-  const handleMouseUp = () => {
-    if (!isDrawing) return;
-    setIsDrawing(false);
+  const handleMouseUp = useCallback(() => {
+    if (!isDrawingRef.current) return;
+    isDrawingRef.current = false;
 
-    if (currentStroke.length >= 3) {
-      // Need at least 3 points for a valid polygon
-      setStrokes((prev) => [...prev, currentStroke]);
-      setCurrentStroke([]);
-      redrawCanvas(canvasRef.current, [...strokes, currentStroke], []);
-    } else {
-      // Discard too-small strokes
-      setCurrentStroke([]);
-      redrawCanvas(canvasRef.current, strokes, []);
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
     }
-  };
+
+    if (currentStrokeRef.current.length >= 3) {
+      strokesRef.current.push(currentStrokeRef.current);
+      setStrokes((prev) => [...prev, currentStrokeRef.current]);
+      currentStrokeRef.current = [];
+      setCurrentStroke([]);
+      redrawAll(strokesRef.current, []);
+    } else {
+      currentStrokeRef.current = [];
+      setCurrentStroke([]);
+      redrawAll(strokesRef.current, []);
+    }
+  }, [redrawAll]);
 
   // Simplify polygon using Ramer-Douglas-Peucker algorithm
-  const simplifyPolygon = (polygon, epsilon = 3) => {
+  const simplifyPolygon = useCallback((polygon, epsilon = 3) => {
     if (polygon.length <= 2) return polygon;
 
     const dmax = (p, line) => {
@@ -184,35 +206,35 @@ export default function FreehandAnnotator({
     };
 
     return rdp(polygon, epsilon);
-  };
+  }, []);
 
   // Undo last stroke/cell
-  const handleUndo = () => {
-    if (strokes.length === 0) return;
-    const updated = strokes.slice(0, -1);
-    setStrokes(updated);
-    redrawCanvas(canvasRef.current, updated, []);
-  };
+  const handleUndo = useCallback(() => {
+    if (strokesRef.current.length === 0) return;
+    strokesRef.current.pop();
+    setStrokes((prev) => prev.slice(0, -1));
+    redrawAll(strokesRef.current, []);
+  }, [redrawAll]);
 
   // Clear all strokes
-  const handleClear = () => {
+  const handleClear = useCallback(() => {
+    strokesRef.current = [];
+    currentStrokeRef.current = [];
     setStrokes([]);
     setCurrentStroke([]);
-    redrawCanvas(canvasRef.current, [], []);
-  };
+    redrawAll([], []);
+  }, [redrawAll]);
 
   // Submit all cells (each stroke is a separate polygon)
-  const handleSubmit = () => {
-    if (strokes.length === 0) {
+  const handleSubmit = useCallback(() => {
+    if (strokesRef.current.length === 0) {
       alert("Please draw at least one cell.");
       return;
     }
 
-    // Convert each stroke to a separate polygon
-    const polygons = strokes.map((stroke) => {
+    const polygons = strokesRef.current.map((stroke) => {
       const simplified = simplifyPolygon(stroke, simplifyEpsilon);
 
-      // Close the polygon
       const coords =
         simplified[0][0] === simplified[simplified.length - 1][0] &&
         simplified[0][1] === simplified[simplified.length - 1][1]
@@ -225,7 +247,6 @@ export default function FreehandAnnotator({
       };
     });
 
-    // Submit all polygons at once
     polygons.forEach((polygon, idx) => {
       onSubmit(polygon, {
         cellNumber: idx + 1,
@@ -235,7 +256,7 @@ export default function FreehandAnnotator({
     });
 
     handleClear();
-  };
+  }, [simplifyPolygon, simplifyEpsilon, onSubmit, handleClear]);
 
   return (
     <div className="absolute inset-0 flex flex-col z-40">
