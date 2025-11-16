@@ -100,16 +100,12 @@ export default function FreehandAnnotator({
       imageRef.current = img;
       const canvas = canvasRef.current;
       if (canvas) {
-        // Set canvas internal resolution to match image
+        // Set canvas internal resolution to match image exactly
         canvas.width = img.width;
         canvas.height = img.height;
 
-        // Set canvas display size to match container
-        const rect = parentContainerRef?.current?.getBoundingClientRect();
-        if (rect) {
-          canvas.style.width = rect.width + "px";
-          canvas.style.height = rect.height + "px";
-        }
+        // Do NOT set canvas.style width/height - let CSS transform handle scaling
+        // The transform will scale the canvas to fit
         redrawAll([], []);
       }
       setImageLoaded(true); // Ready to draw
@@ -119,7 +115,7 @@ export default function FreehandAnnotator({
       imageLoadingRef.current = false;
     };
     img.src = imgSrc;
-  }, [imgSrc, redrawAll, parentContainerRef]);
+  }, [imgSrc, redrawAll]);
   const getCanvasCoords = useCallback(
     (e) => {
       const canvas = canvasRef.current;
