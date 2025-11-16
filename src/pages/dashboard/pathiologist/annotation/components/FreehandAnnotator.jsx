@@ -130,35 +130,36 @@ export default function FreehandAnnotator({
       const canvas = canvasRef.current;
       if (!canvas || !imageRef.current) return null;
 
-      // Get mouse position relative to canvas (which fills container)
-      const rect = canvas.getBoundingClientRect();
-      const displayX = e.clientX - rect.left;
-      const displayY = e.clientY - rect.top;
+      // Get container bounds to match AnnotationView's coordinate system
+      if (!parentContainerRef?.current) return null;
+      const contRect = parentContainerRef.current.getBoundingClientRect();
 
-      // Get transform
+      // Get mouse position relative to container
+      const displayX = e.clientX - contRect.left;
+      const displayY = e.clientY - contRect.top;
+
+      // Get transform with displayed dimensions
       const transform = getTransform
         ? getTransform()
-        : { offsetX: 0, offsetY: 0, scale: 1 };
+        : { offsetX: 0, offsetY: 0, scale: 1, dispW: 0, dispH: 0 };
 
       // Reverse transform: displayCoords -> imageCoords
-      // display = transform.offset + imageCoord * transform.scale
-      // imageCoord = (display - transform.offset) / transform.scale
-      const imgX = (displayX - transform.offsetX) / transform.scale;
-      const imgY = (displayY - transform.offsetY) / transform.scale;
+      // Match the logic in clientToImageCoords from annotation/index.jsx
+      const px = displayX - transform.offsetX;
+      const py = displayY - transform.offsetY;
 
-      // Bounds check
-      if (
-        imgX < 0 ||
-        imgY < 0 ||
-        imgX > imageRef.current.width ||
-        imgY > imageRef.current.height
-      ) {
+      // Bounds check: only allow drawing within the displayed image area
+      if (px < 0 || py < 0 || px > transform.dispW || py > transform.dispH) {
         return null;
       }
 
+      // Convert display coords to image coords using the scale
+      const imgX = px / transform.scale;
+      const imgY = py / transform.scale;
+
       return [imgX, imgY];
     },
-    [getTransform]
+    [getTransform, parentContainerRef]
   );
 
   // Start drawing
@@ -310,7 +311,7 @@ export default function FreehandAnnotator({
 
   return (
     <div className="absolute inset-0 z-40" style={{ overflow: "hidden" }}>
-      {/* Canvas - fills container, renders at display resolution */}
+      {/* Canvas - positioned and sized to match image display area exactly */}
       {imageLoaded && imageRef.current && (
         <canvas
           ref={canvasRef}
@@ -318,10 +319,14 @@ export default function FreehandAnnotator({
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
-          className="absolute inset-0 cursor-crosshair"
+          className="absolute cursor-crosshair"
           style={{
             display: "block",
             pointerEvents: "auto",
+            left: 0,
+            top: 0,
+            width: "100%",
+            height: "100%",
           }}
         />
       )}
