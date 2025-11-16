@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 
 /**
  * FreehandAnnotator - Clean, working implementation
- * 
+ *
  * Key principles:
  * 1. Canvas fills entire container (100% width/height)
  * 2. Canvas internal size = canvas display size (no scaling)
@@ -44,7 +44,7 @@ export default function FreehandAnnotator({
   useEffect(() => {
     const canvas = canvasRef.current;
     const container = parentContainerRef?.current;
-    
+
     if (!canvas || !container) return;
 
     const updateSize = () => {
@@ -69,11 +69,13 @@ export default function FreehandAnnotator({
   const redraw = useCallback(() => {
     const canvas = canvasRef.current;
     const img = imageRef.current;
-    
+
     if (!canvas || !img) return;
 
     const ctx = canvas.getContext("2d");
-    const transform = getTransform ? getTransform() : { offsetX: 0, offsetY: 0, scale: 1 };
+    const transform = getTransform
+      ? getTransform()
+      : { offsetX: 0, offsetY: 0, scale: 1 };
 
     // Clear
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -120,9 +122,15 @@ export default function FreehandAnnotator({
       ctx.lineJoin = "round";
 
       ctx.beginPath();
-      ctx.moveTo(currentStrokeRef.current[0][0], currentStrokeRef.current[0][1]);
+      ctx.moveTo(
+        currentStrokeRef.current[0][0],
+        currentStrokeRef.current[0][1]
+      );
       for (let i = 1; i < currentStrokeRef.current.length; i++) {
-        ctx.lineTo(currentStrokeRef.current[i][0], currentStrokeRef.current[i][1]);
+        ctx.lineTo(
+          currentStrokeRef.current[i][0],
+          currentStrokeRef.current[i][1]
+        );
       }
       ctx.stroke();
     }
@@ -138,61 +146,72 @@ export default function FreehandAnnotator({
   }, [strokes, imageLoaded, redraw]);
 
   // Convert screen coordinates to image coordinates
-  const screenToImage = useCallback((clientX, clientY) => {
-    const canvas = canvasRef.current;
-    const img = imageRef.current;
-    
-    if (!canvas || !img) return null;
+  const screenToImage = useCallback(
+    (clientX, clientY) => {
+      const canvas = canvasRef.current;
+      const img = imageRef.current;
 
-    const rect = canvas.getBoundingClientRect();
-    const canvasX = clientX - rect.left;
-    const canvasY = clientY - rect.top;
+      if (!canvas || !img) return null;
 
-    const transform = getTransform ? getTransform() : { offsetX: 0, offsetY: 0, scale: 1 };
+      const rect = canvas.getBoundingClientRect();
+      const canvasX = clientX - rect.left;
+      const canvasY = clientY - rect.top;
 
-    // Reverse the transform: imageCoord = (canvasCoord - offset) / scale
-    const imgX = (canvasX - transform.offsetX) / transform.scale;
-    const imgY = (canvasY - transform.offsetY) / transform.scale;
+      const transform = getTransform
+        ? getTransform()
+        : { offsetX: 0, offsetY: 0, scale: 1 };
 
-    // Check bounds
-    if (imgX < 0 || imgY < 0 || imgX > img.width || imgY > img.height) {
-      return null;
-    }
+      // Reverse the transform: imageCoord = (canvasCoord - offset) / scale
+      const imgX = (canvasX - transform.offsetX) / transform.scale;
+      const imgY = (canvasY - transform.offsetY) / transform.scale;
 
-    return [imgX, imgY];
-  }, [getTransform]);
+      // Check bounds
+      if (imgX < 0 || imgY < 0 || imgX > img.width || imgY > img.height) {
+        return null;
+      }
+
+      return [imgX, imgY];
+    },
+    [getTransform]
+  );
 
   // Mouse handlers
-  const handleMouseDown = useCallback((e) => {
-    e.preventDefault();
-    const coords = screenToImage(e.clientX, e.clientY);
-    if (coords) {
-      isDrawingRef.current = true;
-      currentStrokeRef.current = [coords];
-      redraw();
-    }
-  }, [screenToImage, redraw]);
+  const handleMouseDown = useCallback(
+    (e) => {
+      e.preventDefault();
+      const coords = screenToImage(e.clientX, e.clientY);
+      if (coords) {
+        isDrawingRef.current = true;
+        currentStrokeRef.current = [coords];
+        redraw();
+      }
+    },
+    [screenToImage, redraw]
+  );
 
-  const handleMouseMove = useCallback((e) => {
-    if (!isDrawingRef.current) return;
-    
-    const coords = screenToImage(e.clientX, e.clientY);
-    if (coords) {
-      currentStrokeRef.current.push(coords);
-      redraw();
-    }
-  }, [screenToImage, redraw]);
+  const handleMouseMove = useCallback(
+    (e) => {
+      if (!isDrawingRef.current) return;
+
+      const coords = screenToImage(e.clientX, e.clientY);
+      if (coords) {
+        currentStrokeRef.current.push(coords);
+        redraw();
+      }
+    },
+    [screenToImage, redraw]
+  );
 
   const handleMouseUp = useCallback(() => {
     if (!isDrawingRef.current) return;
-    
+
     isDrawingRef.current = false;
 
     if (currentStrokeRef.current.length >= 3) {
       strokesRef.current.push([...currentStrokeRef.current]);
       setStrokes([...strokesRef.current]);
     }
-    
+
     currentStrokeRef.current = [];
     redraw();
   }, [redraw]);
@@ -205,10 +224,10 @@ export default function FreehandAnnotator({
       const [x0, y0] = lineStart;
       const [x1, y1] = lineEnd;
       const [px, py] = point;
-      
+
       const num = Math.abs((y1 - y0) * px - (x1 - x0) * py + x1 * y0 - y1 * x0);
       const den = Math.sqrt((y1 - y0) ** 2 + (x1 - x0) ** 2);
-      
+
       return den === 0 ? 0 : num / den;
     };
 
@@ -233,7 +252,7 @@ export default function FreehandAnnotator({
         const right = rdp(pts.slice(maxIdx), eps);
         return [...left.slice(0, -1), ...right];
       }
-      
+
       return [first, last];
     };
 
@@ -263,12 +282,13 @@ export default function FreehandAnnotator({
 
     strokesRef.current.forEach((stroke, idx) => {
       const simplified = simplifyPolygon(stroke, simplifyEpsilon);
-      
+
       // Ensure closed polygon
-      const coords = (simplified[0][0] === simplified[simplified.length - 1][0] &&
-                     simplified[0][1] === simplified[simplified.length - 1][1])
-        ? simplified
-        : [...simplified, simplified[0]];
+      const coords =
+        simplified[0][0] === simplified[simplified.length - 1][0] &&
+        simplified[0][1] === simplified[simplified.length - 1][1]
+          ? simplified
+          : [...simplified, simplified[0]];
 
       const polygon = {
         type: "Polygon",
@@ -315,7 +335,9 @@ export default function FreehandAnnotator({
           {strokes.length > 0 ? (
             <p className="text-green-600">✓ Draw more cells or submit</p>
           ) : (
-            <p className="text-amber-600">Drag to draw cells (one per stroke)</p>
+            <p className="text-amber-600">
+              Drag to draw cells (one per stroke)
+            </p>
           )}
         </div>
 
@@ -343,9 +365,7 @@ export default function FreehandAnnotator({
           Submit {strokes.length > 0 ? `(${strokes.length} Cells)` : ""}
         </button>
 
-        <span className="text-xs text-gray-500">
-          Each stroke = 1 cell
-        </span>
+        <span className="text-xs text-gray-500">Each stroke = 1 celll</span>
       </div>
     </div>
   );
