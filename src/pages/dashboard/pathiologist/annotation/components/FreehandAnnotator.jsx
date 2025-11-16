@@ -90,7 +90,7 @@ export default function FreehandAnnotator({
     }
   }, []);
 
-  // Load and cache image once - no longer needed but keep ref for size
+  // Load and cache image once - set canvas size properly
   useEffect(() => {
     if (imageLoadingRef.current) return; // Prevent duplicate loads
     imageLoadingRef.current = true;
@@ -100,9 +100,16 @@ export default function FreehandAnnotator({
       imageRef.current = img;
       const canvas = canvasRef.current;
       if (canvas) {
-        // Set canvas size to match image for proper coordinate mapping
+        // Set canvas internal resolution to match image
         canvas.width = img.width;
         canvas.height = img.height;
+
+        // Set canvas display size to match container
+        const rect = parentContainerRef?.current?.getBoundingClientRect();
+        if (rect) {
+          canvas.style.width = rect.width + "px";
+          canvas.style.height = rect.height + "px";
+        }
         redrawAll([], []);
       }
       setImageLoaded(true); // Ready to draw
@@ -112,46 +119,30 @@ export default function FreehandAnnotator({
       imageLoadingRef.current = false;
     };
     img.src = imgSrc;
-  }, [imgSrc, redrawAll]);
-  const getCanvasCoords = useCallback(
-    (e) => {
-      if (!canvasRef.current || !parentContainerRef?.current) return null;
+  }, [imgSrc, redrawAll, parentContainerRef]);
+  const getCanvasCoords = useCallback((e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
 
-      // Get container position
-      const containerRect = parentContainerRef.current.getBoundingClientRect();
-      const clientX = e.clientX - containerRect.left;
-      const clientY = e.clientY - containerRect.top;
+    // Get the actual canvas display bounds
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
 
-      // Get current transform if available
-      let offsetX = 0,
-        offsetY = 0,
-        scale = 1;
-      if (getTransform) {
-        const transform = getTransform();
-        offsetX = transform.offsetX;
-        offsetY = transform.offsetY;
-        scale = transform.scale;
-      }
+    // Scale from display coordinates to canvas internal coordinates
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
 
-      // Convert from container/display coordinates to image coordinates
-      const x = (clientX - offsetX) / scale;
-      const y = (clientY - offsetY) / scale;
+    const imgX = x * scaleX;
+    const imgY = y * scaleY;
 
-      // Check bounds
-      if (
-        imageRef.current &&
-        (x < 0 ||
-          y < 0 ||
-          x > imageRef.current.width ||
-          y > imageRef.current.height)
-      ) {
-        return null;
-      }
+    // Check bounds
+    if (imgX < 0 || imgY < 0 || imgX > canvas.width || imgY > canvas.height) {
+      return null;
+    }
 
-      return [x, y];
-    },
-    [getTransform, parentContainerRef]
-  );
+    return [imgX, imgY];
+  }, []);
 
   // Start drawing
   const handleMouseDown = useCallback(
