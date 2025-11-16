@@ -32,29 +32,6 @@ export default function FreehandAnnotator({
   const [currentStroke, setCurrentStroke] = useState([]); // For UI updates only
   const [imageLoaded, setImageLoaded] = useState(false); // Track image loading state
 
-  // Load and cache image once - pre-load before rendering canvas
-  useEffect(() => {
-    if (imageLoadingRef.current) return; // Prevent duplicate loads
-    imageLoadingRef.current = true;
-
-    const img = new Image();
-    img.onload = () => {
-      imageRef.current = img;
-      setImageLoaded(true); // Signal that image is ready
-      const canvas = canvasRef.current;
-      if (canvas) {
-        canvas.width = img.width;
-        canvas.height = img.height;
-        redrawAll([], []);
-      }
-    };
-    img.onerror = () => {
-      console.error("Failed to load image for freehand drawing");
-      imageLoadingRef.current = false;
-    };
-    img.src = imgSrc;
-  }, [imgSrc]);
-
   // Redraw entire canvas
   const redrawAll = useCallback((allStrokes, currentDrawing) => {
     const canvas = canvasRef.current;
@@ -111,7 +88,30 @@ export default function FreehandAnnotator({
     }
   }, []);
 
-  // Get image coordinates from mouse event - accounting for zoom and pan
+  // Load and cache image once - pre-load before rendering canvas
+  useEffect(() => {
+    if (imageLoadingRef.current) return; // Prevent duplicate loads
+    imageLoadingRef.current = true;
+
+    const img = new Image();
+    img.onload = () => {
+      imageRef.current = img;
+      const canvas = canvasRef.current;
+      if (canvas) {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        redrawAll([], []);
+        setImageLoaded(true); // Signal that image is ready AFTER canvas is drawn
+      } else {
+        setImageLoaded(true); // Still set loaded even if canvas not ready yet
+      }
+    };
+    img.onerror = () => {
+      console.error("Failed to load image for freehand drawing");
+      imageLoadingRef.current = false;
+    };
+    img.src = imgSrc;
+  }, [imgSrc, redrawAll]);
   const getCanvasCoords = useCallback(
     (e) => {
       if (!canvasRef.current || !parentContainerRef?.current) return null;
