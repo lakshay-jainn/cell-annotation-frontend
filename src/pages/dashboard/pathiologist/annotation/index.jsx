@@ -1164,6 +1164,16 @@ export default function PointAnnotator() {
               />
             )}
           </div>
+
+          {/* Freehand drawing overlay - renders on top of annotation view */}
+          {freehandMode && imageUrl && (
+            <FreehandAnnotator
+              imgSrc={imageUrl}
+              onSubmit={handleFreehandSubmit}
+              minPoints={3}
+              simplifyEpsilon={2}
+            />
+          )}
         </div>
 
         {/* Controls sidebar - Made scrollable with fixed height */}
@@ -1265,32 +1275,6 @@ export default function PointAnnotator() {
           </div>
         </div>
       </div>
-
-      {/* Freehand Annotator Overlay */}
-      {freehandMode && imageUrl && (
-        <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex flex-col">
-          <div className="bg-white border-b border-gray-200 px-4 py-2 flex justify-between items-center">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Freehand Polygon Drawing
-            </h3>
-            <button
-              onClick={() => setFreehandMode(false)}
-              className="text-gray-500 hover:text-gray-700 text-xl"
-              aria-label="Close"
-            >
-              ✕
-            </button>
-          </div>
-          <div className="flex-1 overflow-hidden">
-            <FreehandAnnotator
-              imgSrc={imageUrl}
-              onSubmit={handleFreehandSubmit}
-              minPoints={3}
-              simplifyEpsilon={2}
-            />
-          </div>
-        </div>
-      )}
 
       <ImageQualityCheck
         showImageQualityCheck={showImageQualityCheck}
