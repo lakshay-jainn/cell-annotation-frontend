@@ -109,10 +109,19 @@ export default function FreehandAnnotator({
       imageRef.current = img;
       const canvas = canvasRef.current;
       if (canvas && parentContainerRef?.current) {
-        // Set canvas to match DISPLAY size (container size)
+        // Set canvas internal dimensions to match container size
+        // This must match the CSS size to avoid coordinate scaling issues
         const rect = parentContainerRef.current.getBoundingClientRect();
         canvas.width = rect.width;
         canvas.height = rect.height;
+
+        console.log("Canvas setup:", {
+          containerWidth: rect.width,
+          containerHeight: rect.height,
+          imageWidth: img.width,
+          imageHeight: img.height,
+        });
+
         // Initial redraw
         redrawAll([], []);
       }
@@ -142,6 +151,18 @@ export default function FreehandAnnotator({
         ? getTransform()
         : { offsetX: 0, offsetY: 0, scale: 1 };
 
+      console.log("Mouse event:", {
+        clientX: e.clientX,
+        clientY: e.clientY,
+        rectLeft: rect.left,
+        rectTop: rect.top,
+        canvasX,
+        canvasY,
+        offsetX: transform.offsetX,
+        offsetY: transform.offsetY,
+        scale: transform.scale,
+      });
+
       // The canvas coordinate transformation is:
       // canvasCoord = offsetX + imageCoord * scale
       // Therefore, inverse transform is:
@@ -150,6 +171,13 @@ export default function FreehandAnnotator({
       const imgX = (canvasX - transform.offsetX) / transform.scale;
       const imgY = (canvasY - transform.offsetY) / transform.scale;
 
+      console.log("Calculated image coords:", {
+        imgX,
+        imgY,
+        imageWidth: imageRef.current.width,
+        imageHeight: imageRef.current.height,
+      });
+
       // Bounds check: ensure we're within the actual image bounds
       if (
         imgX < 0 ||
@@ -157,6 +185,7 @@ export default function FreehandAnnotator({
         imgX > imageRef.current.width ||
         imgY > imageRef.current.height
       ) {
+        console.log("Out of bounds");
         return null;
       }
 
@@ -328,8 +357,8 @@ export default function FreehandAnnotator({
             pointerEvents: "auto",
             left: 0,
             top: 0,
-            width: "100%",
-            height: "100%",
+            // CRITICAL: Don't use CSS width/height that differs from canvas.width/height
+            // This would cause coordinate scaling issues
           }}
         />
       )}
