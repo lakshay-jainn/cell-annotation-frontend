@@ -306,7 +306,7 @@ export default function FreehandAnnotator({
   }, [simplifyPolygon, simplifyEpsilon, onSubmit, handleClear]);
 
   return (
-    <div className="absolute inset-0 z-40 pointer-events-auto">
+    <div className="absolute inset-0 z-50 pointer-events-auto">
       {/* Canvas */}
       {imageLoaded && (
         <canvas

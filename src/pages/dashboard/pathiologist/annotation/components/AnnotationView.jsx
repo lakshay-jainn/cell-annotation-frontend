@@ -15,6 +15,7 @@ const AnnotationView = ({
   pointSize,
   pointColor,
   annotatedPoints,
+  freehandMode,
 }) => {
   if (!imageUrl || !imgSize[0] || !imgSize[1]) return null;
 
@@ -32,6 +33,7 @@ const AnnotationView = ({
       style={{
         cursor: panningRef.current ? "grabbing" : "crosshair",
         touchAction: "none",
+        pointerEvents: freehandMode ? "none" : "auto",
       }}
     >
       <rect x="0" y="0" width="100%" height="100%" fill="transparent" />

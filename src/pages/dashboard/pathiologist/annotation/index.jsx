@@ -1161,6 +1161,7 @@ export default function PointAnnotator() {
                 pointSize={pointSize}
                 pointColor={pointColor}
                 annotatedPoints={annotatedPoints}
+                freehandMode={freehandMode}
               />
             )}
           </div>
