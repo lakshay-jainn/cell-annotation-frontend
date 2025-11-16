@@ -42,7 +42,7 @@ export default function PatientTable({
                   Images
                 </th>
                 <th className="px-6 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider border-b border-slate-300">
-                  Clinical Notes
+                  Final Report
                 </th>
               </tr>
             </thead>
@@ -64,7 +64,7 @@ export default function PatientTable({
                         onClick={() => onUploadReport(patient)}
                         className="px-3 py-2 bg-blue-100 text-blue-800 rounded-xl font-semibold hover:bg-blue-200 transition-colors border border-blue-300"
                       >
-                        Enter Notes
+                        Enter Report
                       </button>
                     ) : (
                       <button
@@ -76,7 +76,7 @@ export default function PatientTable({
                       >
                         {downloading.has(patient.patient_id)
                           ? "Downloading..."
-                          : "View Notes"}
+                          : "View Report"}
                       </button>
                     )}
                   </td>

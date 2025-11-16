@@ -117,12 +117,12 @@ export default function Patients() {
               &times;
             </button>
             <h2 className="text-lg font-bold mb-4">
-              Enter Clinical Notes for {formPatient?.user_typed_id}
+              Enter Report for {formPatient?.user_typed_id}
             </h2>
             <textarea
               value={formText}
               onChange={(e) => setFormText(e.target.value)}
-              placeholder="Enter your clinical notes here..."
+              placeholder="Enter your report here..."
               className="mb-4 block w-full border border-slate-300 rounded px-3 py-2 h-64 resize-none overflow-y-auto"
               required
             />
