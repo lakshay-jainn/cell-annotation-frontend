@@ -35,40 +35,42 @@ export default function FreehandAnnotator({
   // Redraw entire canvas - increase line width for visibility
   const redrawAll = useCallback((allStrokes, currentDrawing) => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || !imageRef.current) return;
     const ctx = canvas.getContext("2d");
 
-    // Clear canvas - keep it transparent
+    // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // DON'T draw the image - it's already behind this overlay
-    // Just draw the user's strokes on top
+    // Calculate scale factor for strokes (canvas size vs image size)
+    const scaleX = canvas.width / imageRef.current.width;
+    const scaleY = canvas.height / imageRef.current.height;
+    const avgScale = (scaleX + scaleY) / 2;
 
     // Draw completed strokes
     allStrokes.forEach((stroke, idx) => {
       if (stroke.length < 2) return;
       ctx.strokeStyle = "#ff6b6b";
-      ctx.lineWidth = 3; // Increased from 2 for better visibility
+      ctx.lineWidth = 3 * avgScale; // Scale line width
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
       ctx.fillStyle = "rgba(255, 107, 107, 0.2)";
       ctx.beginPath();
-      ctx.moveTo(stroke[0][0], stroke[0][1]);
+      ctx.moveTo(stroke[0][0] * scaleX, stroke[0][1] * scaleY);
       for (let i = 1; i < stroke.length; i++) {
-        ctx.lineTo(stroke[i][0], stroke[i][1]);
+        ctx.lineTo(stroke[i][0] * scaleX, stroke[i][1] * scaleY);
       }
-      ctx.lineTo(stroke[0][0], stroke[0][1]);
+      ctx.lineTo(stroke[0][0] * scaleX, stroke[0][1] * scaleY);
       ctx.stroke();
       ctx.fill();
 
       // Draw cell number
       if (stroke.length > 0) {
         const centerX =
-          stroke.reduce((sum, p) => sum + p[0], 0) / stroke.length;
+          (stroke.reduce((sum, p) => sum + p[0], 0) / stroke.length) * scaleX;
         const centerY =
-          stroke.reduce((sum, p) => sum + p[1], 0) / stroke.length;
+          (stroke.reduce((sum, p) => sum + p[1], 0) / stroke.length) * scaleY;
         ctx.fillStyle = "#ff6b6b";
-        ctx.font = "bold 16px Arial";
+        ctx.font = `bold ${16 * avgScale}px Arial`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(idx + 1, centerX, centerY);
@@ -78,13 +80,16 @@ export default function FreehandAnnotator({
     // Draw current stroke in progress
     if (currentDrawing.length >= 2) {
       ctx.strokeStyle = "#ffb86c";
-      ctx.lineWidth = 3; // Increased from 2
+      ctx.lineWidth = 3 * avgScale;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
       ctx.beginPath();
-      ctx.moveTo(currentDrawing[0][0], currentDrawing[0][1]);
+      ctx.moveTo(currentDrawing[0][0] * scaleX, currentDrawing[0][1] * scaleY);
       for (let i = 1; i < currentDrawing.length; i++) {
-        ctx.lineTo(currentDrawing[i][0], currentDrawing[i][1]);
+        ctx.lineTo(
+          currentDrawing[i][0] * scaleX,
+          currentDrawing[i][1] * scaleY
+        );
       }
       ctx.stroke();
     }
@@ -99,13 +104,11 @@ export default function FreehandAnnotator({
     img.onload = () => {
       imageRef.current = img;
       const canvas = canvasRef.current;
-      if (canvas) {
-        // Set canvas internal resolution to match image exactly
-        canvas.width = img.width;
-        canvas.height = img.height;
-
-        // Do NOT set canvas.style width/height - let CSS transform handle scaling
-        // The transform will scale the canvas to fit
+      if (canvas && parentContainerRef?.current) {
+        // Set canvas resolution to match container display size
+        const rect = parentContainerRef.current.getBoundingClientRect();
+        canvas.width = rect.width;
+        canvas.height = rect.height;
         redrawAll([], []);
       }
       setImageLoaded(true); // Ready to draw
@@ -115,7 +118,7 @@ export default function FreehandAnnotator({
       imageLoadingRef.current = false;
     };
     img.src = imgSrc;
-  }, [imgSrc, redrawAll]);
+  }, [imgSrc, redrawAll, parentContainerRef]);
   const getCanvasCoords = useCallback(
     (e) => {
       const canvas = canvasRef.current;
@@ -126,19 +129,21 @@ export default function FreehandAnnotator({
         parentContainerRef?.current?.getBoundingClientRect();
       if (!containerRect) return null;
 
+      // Get mouse position relative to container
       const clientX = e.clientX - containerRect.left;
       const clientY = e.clientY - containerRect.top;
 
-      // Get transform
+      // Get current transform
       const transform = getTransform
         ? getTransform()
         : { offsetX: 0, offsetY: 0, scale: 1 };
 
-      // Reverse the transform: undo translate and scale to get image coordinates
+      // Convert display coordinates to image coordinates
+      // First undo the transform
       const imgX = (clientX - transform.offsetX) / transform.scale;
       const imgY = (clientY - transform.offsetY) / transform.scale;
 
-      // Check bounds
+      // Check bounds against image size
       if (
         imgX < 0 ||
         imgY < 0 ||
@@ -148,6 +153,7 @@ export default function FreehandAnnotator({
         return null;
       }
 
+      // Return image coordinates
       return [imgX, imgY];
     },
     [getTransform, parentContainerRef]
@@ -303,7 +309,7 @@ export default function FreehandAnnotator({
 
   return (
     <div className="absolute inset-0 z-40" style={{ overflow: "hidden" }}>
-      {/* Canvas - same transform as SVG for exact overlay */}
+      {/* Canvas - overlay with proper sizing */}
       {imageLoaded && imageRef.current && (
         <canvas
           ref={canvasRef}
@@ -311,15 +317,11 @@ export default function FreehandAnnotator({
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
-          className="absolute cursor-crosshair"
+          className="absolute inset-0 cursor-crosshair"
           style={{
             display: "block",
             imageRendering: "crisp-edges",
             pointerEvents: "auto",
-            left: 0,
-            top: 0,
-            width: imageRef.current.width + "px",
-            height: imageRef.current.height + "px",
             transformOrigin: "0 0",
             // Apply same transform as SVG
             transform: getTransform
