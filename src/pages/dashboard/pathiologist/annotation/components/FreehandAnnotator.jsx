@@ -28,6 +28,10 @@ export default function FreehandAnnotator({
   const [strokes, setStrokes] = useState([]);
   const [currentStroke, setCurrentStroke] = useState([]);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [canvasDimensions, setCanvasDimensions] = useState({
+    width: 0,
+    height: 0,
+  });
 
   // Redraw canvas with zoom/pan applied
   const redrawAll = useCallback(
@@ -99,6 +103,36 @@ export default function FreehandAnnotator({
     [getTransform]
   );
 
+  // Setup canvas dimensions to match container
+  useEffect(() => {
+    const updateCanvasSize = () => {
+      const canvas = canvasRef.current;
+      if (canvas && parentContainerRef?.current) {
+        const rect = parentContainerRef.current.getBoundingClientRect();
+        // Set canvas internal dimensions to match container size
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+        // Update state to trigger re-render with correct dimensions
+        setCanvasDimensions({ width: rect.width, height: rect.height });
+        // Redraw after resize
+        if (imageRef.current) {
+          redrawAll(strokesRef.current, currentStrokeRef.current);
+        }
+      }
+    };
+
+    // Initial size setup
+    updateCanvasSize();
+
+    // Watch for container size changes
+    const resizeObserver = new ResizeObserver(updateCanvasSize);
+    if (parentContainerRef?.current) {
+      resizeObserver.observe(parentContainerRef.current);
+    }
+
+    return () => resizeObserver.disconnect();
+  }, [parentContainerRef, redrawAll]);
+
   // Load image and setup canvas
   useEffect(() => {
     if (imageLoadingRef.current) return;
@@ -107,28 +141,16 @@ export default function FreehandAnnotator({
     const img = new Image();
     img.onload = () => {
       imageRef.current = img;
-      const canvas = canvasRef.current;
-      if (canvas && parentContainerRef?.current) {
-        // Set canvas internal dimensions to match container size
-        const rect = parentContainerRef.current.getBoundingClientRect();
-        canvas.width = rect.width;
-        canvas.height = rect.height;
-
-        // Also set CSS size to match (prevents scaling)
-        canvas.style.width = `${rect.width}px`;
-        canvas.style.height = `${rect.height}px`;
-
-        // Initial redraw
-        redrawAll([], []);
-      }
       setImageLoaded(true);
+      // Redraw with loaded image
+      redrawAll([], []);
     };
     img.onerror = () => {
       console.error("Failed to load image");
       imageLoadingRef.current = false;
     };
     img.src = imgSrc;
-  }, [imgSrc, redrawAll, parentContainerRef]);
+  }, [imgSrc, redrawAll]);
   // Convert mouse/display coordinates to image coordinates
   const getImageCoords = useCallback(
     (e) => {
@@ -331,10 +353,11 @@ export default function FreehandAnnotator({
           style={{
             display: "block",
             pointerEvents: "auto",
+            position: "absolute",
             left: 0,
             top: 0,
-            // CRITICAL: Don't use CSS width/height that differs from canvas.width/height
-            // This would cause coordinate scaling issues
+            width: `${canvasDimensions.width}px`,
+            height: `${canvasDimensions.height}px`,
           }}
         />
       )}
