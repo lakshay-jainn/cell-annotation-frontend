@@ -9,15 +9,20 @@ import { useEffect, useRef, useState, useCallback } from "react";
  *   - imgSrc: URL or data URL of the image
  *   - onSubmit: callback(geojson, metadata) when user submits drawing
  *   - simplifyEpsilon: line simplification epsilon (default: 3)
+ *   - getTransform: function to get current zoom/pan transform
+ *   - containerRef: ref to container for coordinate mapping
  */
 
 export default function FreehandAnnotator({
   imgSrc,
   onSubmit,
   simplifyEpsilon = 3,
+  getTransform,
+  containerRef: parentContainerRef,
 }) {
   const canvasRef = useRef(null);
   const imageRef = useRef(null);
+  const imageLoadingRef = useRef(false);
   const strokesRef = useRef([]); // Use ref for strokes to avoid stale closures
   const currentStrokeRef = useRef([]); // Use ref for current stroke
   const isDrawingRef = useRef(false);
@@ -25,18 +30,27 @@ export default function FreehandAnnotator({
 
   const [strokes, setStrokes] = useState([]); // For UI updates only
   const [currentStroke, setCurrentStroke] = useState([]); // For UI updates only
+  const [imageLoaded, setImageLoaded] = useState(false); // Track image loading state
 
-  // Load and cache image once
+  // Load and cache image once - pre-load before rendering canvas
   useEffect(() => {
+    if (imageLoadingRef.current) return; // Prevent duplicate loads
+    imageLoadingRef.current = true;
+
     const img = new Image();
     img.onload = () => {
       imageRef.current = img;
+      setImageLoaded(true); // Signal that image is ready
       const canvas = canvasRef.current;
       if (canvas) {
         canvas.width = img.width;
         canvas.height = img.height;
         redrawAll([], []);
       }
+    };
+    img.onerror = () => {
+      console.error("Failed to load image for freehand drawing");
+      imageLoadingRef.current = false;
     };
     img.src = imgSrc;
   }, [imgSrc]);
@@ -97,18 +111,46 @@ export default function FreehandAnnotator({
     }
   }, []);
 
-  // Get canvas coordinates from mouse event
-  const getCanvasCoords = useCallback((e) => {
-    if (!canvasRef.current) return null;
-    const rect = canvasRef.current.getBoundingClientRect();
-    const scaleX = canvasRef.current.width / rect.width;
-    const scaleY = canvasRef.current.height / rect.height;
+  // Get image coordinates from mouse event - accounting for zoom and pan
+  const getCanvasCoords = useCallback(
+    (e) => {
+      if (!canvasRef.current || !parentContainerRef?.current) return null;
 
-    const x = (e.clientX - rect.left) * scaleX;
-    const y = (e.clientY - rect.top) * scaleY;
+      // Get container position
+      const containerRect = parentContainerRef.current.getBoundingClientRect();
+      const clientX = e.clientX - containerRect.left;
+      const clientY = e.clientY - containerRect.top;
 
-    return [x, y];
-  }, []);
+      // Get current transform if available
+      let offsetX = 0,
+        offsetY = 0,
+        scale = 1;
+      if (getTransform) {
+        const transform = getTransform();
+        offsetX = transform.offsetX;
+        offsetY = transform.offsetY;
+        scale = transform.scale;
+      }
+
+      // Convert from container/display coordinates to image coordinates
+      const x = (clientX - offsetX) / scale;
+      const y = (clientY - offsetY) / scale;
+
+      // Check bounds
+      if (
+        imageRef.current &&
+        (x < 0 ||
+          y < 0 ||
+          x > imageRef.current.width ||
+          y > imageRef.current.height)
+      ) {
+        return null;
+      }
+
+      return [x, y];
+    },
+    [getTransform, parentContainerRef]
+  );
 
   // Start drawing
   const handleMouseDown = useCallback(
@@ -261,15 +303,22 @@ export default function FreehandAnnotator({
   return (
     <div className="absolute inset-0 flex flex-col z-40">
       {/* Canvas - overlays the annotation view */}
-      <canvas
-        ref={canvasRef}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        className="flex-1 cursor-crosshair"
-        style={{ display: "block" }}
-      />
+      {imageLoaded && (
+        <canvas
+          ref={canvasRef}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          className="flex-1 cursor-crosshair"
+          style={{ display: "block" }}
+        />
+      )}
+      {!imageLoaded && (
+        <div className="flex-1 flex items-center justify-center bg-gray-900 bg-opacity-50">
+          <p className="text-white text-sm">Loading drawing canvas...</p>
+        </div>
+      )}
 
       {/* Controls Toolbar */}
       <div className="bg-white bg-opacity-95 border-t border-gray-300 p-3 flex gap-2 flex-wrap items-center">

@@ -1172,6 +1172,8 @@ export default function PointAnnotator() {
               onSubmit={handleFreehandSubmit}
               minPoints={3}
               simplifyEpsilon={2}
+              getTransform={getTransform}
+              containerRef={containerRef}
             />
           )}
         </div>
