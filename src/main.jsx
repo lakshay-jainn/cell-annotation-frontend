@@ -68,6 +68,9 @@ const router = createBrowserRouter(
       <Route path="/unauthorized" element={<Unauthorized />} />
       <Route path="/404" element={<NotFound />} />
 
+      {/* Testing route - unprotected for easy access */}
+      {/* <Route path="/testing" element={<TestingPage />} /> */}
+
       {/* Catch-all route for 404 */}
       <Route path="*" element={<NotFound />} />
     </>

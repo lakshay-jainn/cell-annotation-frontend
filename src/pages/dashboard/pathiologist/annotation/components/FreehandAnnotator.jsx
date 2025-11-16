@@ -1,69 +1,39 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 
-/**
- * FreehandAnnotator - Clean, working implementation
- *
- * Key principles:
- * 1. Canvas fills entire container (100% width/height)
- * 2. Canvas internal size = canvas display size (no scaling)
- * 3. Store strokes in IMAGE coordinates
- * 4. Apply transform when drawing to canvas
- * 5. Reverse transform when capturing mouse events
- */
-
 export default function FreehandAnnotator({
   imgSrc,
   onSubmit,
   simplifyEpsilon = 3,
   getTransform,
   containerRef: parentContainerRef,
+  forceUpdate,
+  setPan,
 }) {
   const canvasRef = useRef(null);
   const imageRef = useRef(null);
   const strokesRef = useRef([]); // Completed strokes in IMAGE coords
   const currentStrokeRef = useRef([]); // Current stroke in IMAGE coords
   const isDrawingRef = useRef(false);
+  const isPanningRef = useRef(false);
+  const panStartRef = useRef({ x: 0, y: 0 });
 
   const [strokes, setStrokes] = useState([]);
   const [imageLoaded, setImageLoaded] = useState(false);
 
-  // Load image
+  // Trigger initial redraw when component mounts and image loads
   useEffect(() => {
-    const img = new Image();
-    img.onload = () => {
-      imageRef.current = img;
-      setImageLoaded(true);
-    };
-    img.onerror = () => {
-      console.error("Failed to load image for freehand annotation");
-    };
-    img.src = imgSrc;
-  }, [imgSrc]);
+    if (imageLoaded && forceUpdate) {
+      forceUpdate();
+    }
+  }, [imageLoaded, forceUpdate]);
 
-  // Setup canvas size to match container
+  // Force initial render on component mount
   useEffect(() => {
-    const canvas = canvasRef.current;
-    const container = parentContainerRef?.current;
-
-    if (!canvas || !container) return;
-
-    const updateSize = () => {
-      const rect = container.getBoundingClientRect();
-      // Set both internal and CSS size to same values (no scaling)
-      canvas.width = rect.width;
-      canvas.height = rect.height;
-      // Redraw after resize
-      redraw();
-    };
-
-    updateSize();
-
-    // Watch for container resize
-    const observer = new ResizeObserver(updateSize);
-    observer.observe(container);
-
-    return () => observer.disconnect();
-  }, [parentContainerRef]);
+    const timer = setTimeout(() => {
+      if (forceUpdate) forceUpdate();
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [forceUpdate]);
 
   // Redraw canvas
   const redraw = useCallback(() => {
@@ -90,7 +60,7 @@ export default function FreehandAnnotator({
       if (stroke.length < 2) return;
 
       ctx.strokeStyle = "#ff6b6b";
-      ctx.lineWidth = 2 / transform.scale; // Scale line width inversely
+      ctx.lineWidth = 2 / transform.scale;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
       ctx.fillStyle = "rgba(255, 107, 107, 0.2)";
@@ -138,12 +108,57 @@ export default function FreehandAnnotator({
     ctx.restore();
   }, [getTransform]);
 
-  // Redraw when strokes change or transform changes
+  // Load image
   useEffect(() => {
-    if (imageLoaded) {
+    const img = new Image();
+    img.onload = () => {
+      imageRef.current = img;
+      setImageLoaded(true);
+    };
+    img.onerror = () => {
+      console.error("Failed to load image for freehand annotation");
+    };
+    img.src = imgSrc;
+  }, [imgSrc]);
+
+  // Setup canvas size to match container
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const container = parentContainerRef?.current;
+
+    if (!canvas || !container) return;
+
+    const updateSize = () => {
+      const rect = container.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+
+      // Redraw after resize
+      if (imageRef.current) {
+        redraw();
+      }
+    };
+
+    updateSize();
+
+    // Watch for container resize
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(container);
+
+    return () => observer.disconnect();
+  }, [parentContainerRef, redraw]);
+
+  // Force redraw when transform function changes (zoom/pan/imgSize updates)
+  useEffect(() => {
+    if (imageLoaded && canvasRef.current) {
       redraw();
     }
-  }, [strokes, imageLoaded, redraw]);
+  }, [getTransform, imageLoaded, redraw]);
+
+  // Redraw when strokes change
+  useEffect(() => {
+    redraw();
+  }, [strokes, redraw]);
 
   // Convert screen coordinates to image coordinates
   const screenToImage = useCallback(
@@ -178,45 +193,85 @@ export default function FreehandAnnotator({
   // Mouse handlers
   const handleMouseDown = useCallback(
     (e) => {
-      e.preventDefault();
-      const coords = screenToImage(e.clientX, e.clientY);
-      if (coords) {
-        isDrawingRef.current = true;
-        currentStrokeRef.current = [coords];
-        redraw();
+      // Right-click for panning
+      if (e.button === 2) {
+        e.preventDefault();
+        isPanningRef.current = true;
+        panStartRef.current = { x: e.clientX, y: e.clientY };
+        return;
+      }
+
+      // Left-click for drawing
+      if (e.button === 0) {
+        e.preventDefault();
+        const coords = screenToImage(e.clientX, e.clientY);
+        if (coords) {
+          isDrawingRef.current = true;
+          currentStrokeRef.current = [coords];
+
+          // Force parent update to trigger redraw (same as zoom does)
+          if (forceUpdate) forceUpdate();
+        }
       }
     },
-    [screenToImage, redraw]
+    [screenToImage, forceUpdate]
   );
 
   const handleMouseMove = useCallback(
     (e) => {
+      // Handle panning
+      if (isPanningRef.current && setPan) {
+        e.preventDefault();
+        const dx = e.clientX - panStartRef.current.x;
+        const dy = e.clientY - panStartRef.current.y;
+        panStartRef.current = { x: e.clientX, y: e.clientY };
+        setPan(([px, py]) => [px + dx, py + dy]);
+        return;
+      }
+
+      // Handle drawing
       if (!isDrawingRef.current) return;
 
       const coords = screenToImage(e.clientX, e.clientY);
       if (coords) {
         currentStrokeRef.current.push(coords);
+        // Force immediate repaint
+        requestAnimationFrame(() => redraw());
+      }
+    },
+    [screenToImage, redraw, setPan]
+  );
+
+  const handleMouseUp = useCallback(
+    (e) => {
+      // Handle panning release
+      if (e && e.button === 2 && isPanningRef.current) {
+        isPanningRef.current = false;
+        return;
+      }
+
+      if (!isDrawingRef.current) return;
+
+      isDrawingRef.current = false;
+
+      if (currentStrokeRef.current.length >= 3) {
+        // Move current stroke to completed strokes
+        strokesRef.current.push([...currentStrokeRef.current]);
+        currentStrokeRef.current = [];
+
+        // Update state to trigger re-render
+        setStrokes([...strokesRef.current]);
+
+        // Force parent update to trigger redraw (same as zoom does)
+        if (forceUpdate) forceUpdate();
+      } else {
+        // Stroke too short, just clear it
+        currentStrokeRef.current = [];
         redraw();
       }
     },
-    [screenToImage, redraw]
-  );
-
-  const handleMouseUp = useCallback(() => {
-    if (!isDrawingRef.current) return;
-
-    isDrawingRef.current = false;
-
-    if (currentStrokeRef.current.length >= 3) {
-      strokesRef.current.push([...currentStrokeRef.current]);
-      setStrokes([...strokesRef.current]);
-    }
-
-    currentStrokeRef.current = [];
-    redraw();
-  }, [redraw]);
-
-  // Simplify polygon (Ramer-Douglas-Peucker)
+    [redraw, forceUpdate]
+  ); // Simplify polygon (Ramer-Douglas-Peucker)
   const simplifyPolygon = useCallback((points, epsilon) => {
     if (points.length <= 2) return points;
 
@@ -315,9 +370,11 @@ export default function FreehandAnnotator({
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
+          onContextMenu={(e) => e.preventDefault()}
           className="absolute inset-0 w-full h-full cursor-crosshair"
           style={{
             touchAction: "none",
+            backgroundColor: "rgba(0, 255, 0, 0.05)", // Slight green tint to see canvas
           }}
         />
       )}
