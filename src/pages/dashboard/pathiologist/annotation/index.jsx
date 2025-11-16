@@ -1175,6 +1175,8 @@ export default function PointAnnotator() {
               simplifyEpsilon={2}
               getTransform={getTransform}
               containerRef={containerRef}
+              forceUpdate={() => setPan((p) => [...p])}
+              setPan={setPan}
             />
           )}
         </div>
