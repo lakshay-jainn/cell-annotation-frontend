@@ -120,29 +120,42 @@ export default function FreehandAnnotator({
     };
     img.src = imgSrc;
   }, [imgSrc, redrawAll, parentContainerRef]);
-  const getCanvasCoords = useCallback((e) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return null;
+  const getCanvasCoords = useCallback(
+    (e) => {
+      const canvas = canvasRef.current;
+      if (!canvas || !imageRef.current) return null;
 
-    // Get the actual canvas display bounds
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+      // Get container position
+      const containerRect =
+        parentContainerRef?.current?.getBoundingClientRect();
+      if (!containerRect) return null;
 
-    // Scale from display coordinates to canvas internal coordinates
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
+      const clientX = e.clientX - containerRect.left;
+      const clientY = e.clientY - containerRect.top;
 
-    const imgX = x * scaleX;
-    const imgY = y * scaleY;
+      // Get transform
+      const transform = getTransform
+        ? getTransform()
+        : { offsetX: 0, offsetY: 0, scale: 1 };
 
-    // Check bounds
-    if (imgX < 0 || imgY < 0 || imgX > canvas.width || imgY > canvas.height) {
-      return null;
-    }
+      // Reverse the transform: undo translate and scale to get image coordinates
+      const imgX = (clientX - transform.offsetX) / transform.scale;
+      const imgY = (clientY - transform.offsetY) / transform.scale;
 
-    return [imgX, imgY];
-  }, []);
+      // Check bounds
+      if (
+        imgX < 0 ||
+        imgY < 0 ||
+        imgX > imageRef.current.width ||
+        imgY > imageRef.current.height
+      ) {
+        return null;
+      }
+
+      return [imgX, imgY];
+    },
+    [getTransform, parentContainerRef]
+  );
 
   // Start drawing
   const handleMouseDown = useCallback(
@@ -293,24 +306,35 @@ export default function FreehandAnnotator({
   }, [simplifyPolygon, simplifyEpsilon, onSubmit, handleClear]);
 
   return (
-    <div className="absolute inset-0 flex flex-col z-40">
-      {/* Canvas - transparent overlay for drawing only */}
-      {imageLoaded && (
+    <div className="absolute inset-0 z-40">
+      {/* Canvas - same transform as SVG for exact overlay */}
+      {imageLoaded && imageRef.current && (
         <canvas
           ref={canvasRef}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
-          className="absolute inset-0 cursor-crosshair"
+          className="absolute cursor-crosshair"
           style={{
             display: "block",
             imageRendering: "crisp-edges",
+            left: 0,
+            top: 0,
+            width: imageRef.current.width + "px",
+            height: imageRef.current.height + "px",
+            transformOrigin: "0 0",
+            // Apply same transform as SVG
+            transform: getTransform
+              ? `translate(${getTransform().offsetX}px, ${
+                  getTransform().offsetY
+                }px) scale(${getTransform().scale})`
+              : "none",
           }}
         />
       )}
       {!imageLoaded && (
-        <div className="flex-1 flex items-center justify-center bg-gray-900 bg-opacity-50">
+        <div className="flex items-center justify-center h-full bg-gray-900 bg-opacity-50">
           <p className="text-white text-sm">Loading drawing canvas...</p>
         </div>
       )}
