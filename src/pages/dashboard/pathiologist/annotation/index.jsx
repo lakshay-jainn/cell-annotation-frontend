@@ -407,9 +407,6 @@ export default function PointAnnotator() {
       });
 
       setFreehandMode(false);
-      toast.success(
-        "Freehand polygon added! Remember to select a cell type and save annotation."
-      );
     },
     [makePredictionFromPolygon]
   );

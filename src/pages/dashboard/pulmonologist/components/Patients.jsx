@@ -77,7 +77,7 @@ export default function Patients() {
             : p
         )
       );
-      toast.success("Clinical notes uploaded!");
+      toast.success("Final Report uploaded!");
       setShowForm(false);
     } catch (err) {
       toast.error(err?.response?.data?.message || "Upload failed");
