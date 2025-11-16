@@ -32,7 +32,7 @@ export default function FreehandAnnotator({
   const [currentStroke, setCurrentStroke] = useState([]); // For UI updates only
   const [imageLoaded, setImageLoaded] = useState(false); // Track image loading state
 
-  // Redraw entire canvas
+  // Redraw entire canvas - increase line width for visibility
   const redrawAll = useCallback((allStrokes, currentDrawing) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -48,10 +48,10 @@ export default function FreehandAnnotator({
     allStrokes.forEach((stroke, idx) => {
       if (stroke.length < 2) return;
       ctx.strokeStyle = "#ff6b6b";
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 3; // Increased from 2 for better visibility
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
-      ctx.fillStyle = "rgba(255, 107, 107, 0.15)";
+      ctx.fillStyle = "rgba(255, 107, 107, 0.2)";
       ctx.beginPath();
       ctx.moveTo(stroke[0][0], stroke[0][1]);
       for (let i = 1; i < stroke.length; i++) {
@@ -68,7 +68,7 @@ export default function FreehandAnnotator({
         const centerY =
           stroke.reduce((sum, p) => sum + p[1], 0) / stroke.length;
         ctx.fillStyle = "#ff6b6b";
-        ctx.font = "bold 14px Arial";
+        ctx.font = "bold 16px Arial";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(idx + 1, centerX, centerY);
@@ -78,7 +78,7 @@ export default function FreehandAnnotator({
     // Draw current stroke in progress
     if (currentDrawing.length >= 2) {
       ctx.strokeStyle = "#ffb86c";
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 3; // Increased from 2
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
       ctx.beginPath();
@@ -306,7 +306,7 @@ export default function FreehandAnnotator({
   }, [simplifyPolygon, simplifyEpsilon, onSubmit, handleClear]);
 
   return (
-    <div className="absolute inset-0 z-40">
+    <div className="absolute inset-0 z-40" style={{ overflow: "hidden" }}>
       {/* Canvas - same transform as SVG for exact overlay */}
       {imageLoaded && imageRef.current && (
         <canvas
@@ -319,6 +319,7 @@ export default function FreehandAnnotator({
           style={{
             display: "block",
             imageRendering: "crisp-edges",
+            pointerEvents: "auto",
             left: 0,
             top: 0,
             width: imageRef.current.width + "px",
@@ -330,6 +331,7 @@ export default function FreehandAnnotator({
                   getTransform().offsetY
                 }px) scale(${getTransform().scale})`
               : "none",
+            zIndex: 35, // Above SVG
           }}
         />
       )}
