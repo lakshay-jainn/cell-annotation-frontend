@@ -130,23 +130,25 @@ export default function FreehandAnnotator({
       const canvas = canvasRef.current;
       if (!canvas || !imageRef.current) return null;
 
-      // Get canvas bounds (canvas fills container exactly)
+      // Get canvas bounds in viewport coordinates
       const rect = canvas.getBoundingClientRect();
-      const displayX = e.clientX - rect.left;
-      const displayY = e.clientY - rect.top;
+
+      // Get mouse position relative to canvas element
+      const canvasX = e.clientX - rect.left;
+      const canvasY = e.clientY - rect.top;
 
       // Get current transform
       const transform = getTransform
         ? getTransform()
-        : { offsetX: 0, offsetY: 0, scale: 1, dispW: 0, dispH: 0 };
+        : { offsetX: 0, offsetY: 0, scale: 1 };
 
-      // The canvas context applies: translate(offsetX, offsetY) then scale(scale, scale)
-      // So the inverse transform is:
-      // displayCoord = offsetX + imageCoord * scale
-      // imageCoord = (displayCoord - offsetX) / scale
+      // The canvas coordinate transformation is:
+      // canvasCoord = offsetX + imageCoord * scale
+      // Therefore, inverse transform is:
+      // imageCoord = (canvasCoord - offsetX) / scale
 
-      const imgX = (displayX - transform.offsetX) / transform.scale;
-      const imgY = (displayY - transform.offsetY) / transform.scale;
+      const imgX = (canvasX - transform.offsetX) / transform.scale;
+      const imgY = (canvasY - transform.offsetY) / transform.scale;
 
       // Bounds check: ensure we're within the actual image bounds
       if (
