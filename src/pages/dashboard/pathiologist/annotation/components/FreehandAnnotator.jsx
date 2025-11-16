@@ -130,36 +130,37 @@ export default function FreehandAnnotator({
       const canvas = canvasRef.current;
       if (!canvas || !imageRef.current) return null;
 
-      // Get container bounds to match AnnotationView's coordinate system
-      if (!parentContainerRef?.current) return null;
-      const contRect = parentContainerRef.current.getBoundingClientRect();
+      // Get canvas bounds (canvas fills container exactly)
+      const rect = canvas.getBoundingClientRect();
+      const displayX = e.clientX - rect.left;
+      const displayY = e.clientY - rect.top;
 
-      // Get mouse position relative to container
-      const displayX = e.clientX - contRect.left;
-      const displayY = e.clientY - contRect.top;
-
-      // Get transform with displayed dimensions
+      // Get current transform
       const transform = getTransform
         ? getTransform()
         : { offsetX: 0, offsetY: 0, scale: 1, dispW: 0, dispH: 0 };
 
-      // Reverse transform: displayCoords -> imageCoords
-      // Match the logic in clientToImageCoords from annotation/index.jsx
-      const px = displayX - transform.offsetX;
-      const py = displayY - transform.offsetY;
+      // The canvas context applies: translate(offsetX, offsetY) then scale(scale, scale)
+      // So the inverse transform is:
+      // displayCoord = offsetX + imageCoord * scale
+      // imageCoord = (displayCoord - offsetX) / scale
 
-      // Bounds check: only allow drawing within the displayed image area
-      if (px < 0 || py < 0 || px > transform.dispW || py > transform.dispH) {
+      const imgX = (displayX - transform.offsetX) / transform.scale;
+      const imgY = (displayY - transform.offsetY) / transform.scale;
+
+      // Bounds check: ensure we're within the actual image bounds
+      if (
+        imgX < 0 ||
+        imgY < 0 ||
+        imgX > imageRef.current.width ||
+        imgY > imageRef.current.height
+      ) {
         return null;
       }
 
-      // Convert display coords to image coords using the scale
-      const imgX = px / transform.scale;
-      const imgY = py / transform.scale;
-
       return [imgX, imgY];
     },
-    [getTransform, parentContainerRef]
+    [getTransform]
   );
 
   // Start drawing
