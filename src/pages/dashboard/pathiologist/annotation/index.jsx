@@ -18,7 +18,7 @@ import AnnotationView from "./components/AnnotationView.jsx";
 import ImageQualityCheck from "./components/ImageQualityCheck.jsx";
 import LoadingScreen from "./components/LoadingScreen.jsx";
 import CellStateLegend from "./components/CellStateLegend.jsx";
-import FreehandAnnotator from "./components/FreehandAnnotator.jsx";
+import FreehandAnnotator from "./components/FreehandAnnotator_backup.jsx";
 
 export default function PointAnnotator() {
   const { patientId } = useParams(); // Changed from jobId to patientId
