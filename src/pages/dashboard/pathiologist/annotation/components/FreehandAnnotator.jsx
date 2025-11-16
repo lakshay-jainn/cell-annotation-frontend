@@ -5,12 +5,9 @@ import { useEffect, useRef, useState, useCallback } from "react";
  * Allows users to draw multiple freehand cells.
  * Each stroke becomes a separate polygon (cell).
  *
- * Props:
- *   - imgSrc: URL or data URL of the image
- *   - onSubmit: callback(geojson, metadata) when user submits drawing
- *   - simplifyEpsilon: line simplification epsilon (default: 3)
- *   - getTransform: function to get current zoom/pan transform
- *   - containerRef: ref to container for coordinate mapping
+ * The key insight: Canvas rendering must happen at display resolution
+ * with zoom/pan applied during rendering, NOT via CSS transforms.
+ * This keeps mouse coordinate mapping simple and direct.
  */
 
 export default function FreehandAnnotator({
@@ -23,81 +20,88 @@ export default function FreehandAnnotator({
   const canvasRef = useRef(null);
   const imageRef = useRef(null);
   const imageLoadingRef = useRef(false);
-  const strokesRef = useRef([]); // Use ref for strokes to avoid stale closures
-  const currentStrokeRef = useRef([]); // Use ref for current stroke
+  const strokesRef = useRef([]); // Strokes stored in IMAGE coordinates
+  const currentStrokeRef = useRef([]); // Current stroke in IMAGE coordinates
   const isDrawingRef = useRef(false);
   const animationFrameRef = useRef(null);
 
-  const [strokes, setStrokes] = useState([]); // For UI updates only
-  const [currentStroke, setCurrentStroke] = useState([]); // For UI updates only
-  const [imageLoaded, setImageLoaded] = useState(false); // Track image loading state
+  const [strokes, setStrokes] = useState([]);
+  const [currentStroke, setCurrentStroke] = useState([]);
+  const [imageLoaded, setImageLoaded] = useState(false);
 
-  // Redraw entire canvas - increase line width for visibility
-  const redrawAll = useCallback((allStrokes, currentDrawing) => {
-    const canvas = canvasRef.current;
-    if (!canvas || !imageRef.current) return;
-    const ctx = canvas.getContext("2d");
+  // Redraw canvas with zoom/pan applied
+  const redrawAll = useCallback(
+    (allStrokes, currentDrawing) => {
+      const canvas = canvasRef.current;
+      if (!canvas || !imageRef.current) return;
+      const ctx = canvas.getContext("2d");
 
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // Get current transform
+      const transform = getTransform
+        ? getTransform()
+        : { offsetX: 0, offsetY: 0, scale: 1 };
 
-    // Calculate scale factor for strokes (canvas size vs image size)
-    const scaleX = canvas.width / imageRef.current.width;
-    const scaleY = canvas.height / imageRef.current.height;
-    const avgScale = (scaleX + scaleY) / 2;
+      // CRITICAL: Clear canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Draw completed strokes
-    allStrokes.forEach((stroke, idx) => {
-      if (stroke.length < 2) return;
-      ctx.strokeStyle = "#ff6b6b";
-      ctx.lineWidth = 3 * avgScale; // Scale line width
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      ctx.fillStyle = "rgba(255, 107, 107, 0.2)";
-      ctx.beginPath();
-      ctx.moveTo(stroke[0][0] * scaleX, stroke[0][1] * scaleY);
-      for (let i = 1; i < stroke.length; i++) {
-        ctx.lineTo(stroke[i][0] * scaleX, stroke[i][1] * scaleY);
+      // Apply transform to canvas context (NOT via CSS)
+      ctx.save();
+      ctx.translate(transform.offsetX, transform.offsetY);
+      ctx.scale(transform.scale, transform.scale);
+
+      // Draw completed strokes (stored in image coordinates)
+      allStrokes.forEach((stroke, idx) => {
+        if (stroke.length < 2) return;
+        ctx.strokeStyle = "#ff6b6b";
+        ctx.lineWidth = 2; // In image coordinate space
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.fillStyle = "rgba(255, 107, 107, 0.2)";
+        ctx.beginPath();
+        ctx.moveTo(stroke[0][0], stroke[0][1]);
+        for (let i = 1; i < stroke.length; i++) {
+          ctx.lineTo(stroke[i][0], stroke[i][1]);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Draw cell number
+        if (stroke.length > 0) {
+          const centerX =
+            stroke.reduce((sum, p) => sum + p[0], 0) / stroke.length;
+          const centerY =
+            stroke.reduce((sum, p) => sum + p[1], 0) / stroke.length;
+          ctx.fillStyle = "#ff6b6b";
+          ctx.font = "bold 14px Arial";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(idx + 1, centerX, centerY);
+        }
+      });
+
+      // Draw current stroke in progress
+      if (currentDrawing.length >= 2) {
+        ctx.strokeStyle = "#ffb86c";
+        ctx.lineWidth = 2;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.beginPath();
+        ctx.moveTo(currentDrawing[0][0], currentDrawing[0][1]);
+        for (let i = 1; i < currentDrawing.length; i++) {
+          ctx.lineTo(currentDrawing[i][0], currentDrawing[i][1]);
+        }
+        ctx.stroke();
       }
-      ctx.lineTo(stroke[0][0] * scaleX, stroke[0][1] * scaleY);
-      ctx.stroke();
-      ctx.fill();
 
-      // Draw cell number
-      if (stroke.length > 0) {
-        const centerX =
-          (stroke.reduce((sum, p) => sum + p[0], 0) / stroke.length) * scaleX;
-        const centerY =
-          (stroke.reduce((sum, p) => sum + p[1], 0) / stroke.length) * scaleY;
-        ctx.fillStyle = "#ff6b6b";
-        ctx.font = `bold ${16 * avgScale}px Arial`;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(idx + 1, centerX, centerY);
-      }
-    });
+      ctx.restore();
+    },
+    [getTransform]
+  );
 
-    // Draw current stroke in progress
-    if (currentDrawing.length >= 2) {
-      ctx.strokeStyle = "#ffb86c";
-      ctx.lineWidth = 3 * avgScale;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      ctx.beginPath();
-      ctx.moveTo(currentDrawing[0][0] * scaleX, currentDrawing[0][1] * scaleY);
-      for (let i = 1; i < currentDrawing.length; i++) {
-        ctx.lineTo(
-          currentDrawing[i][0] * scaleX,
-          currentDrawing[i][1] * scaleY
-        );
-      }
-      ctx.stroke();
-    }
-  }, []);
-
-  // Load and cache image once - set canvas size properly
+  // Load image and setup canvas
   useEffect(() => {
-    if (imageLoadingRef.current) return; // Prevent duplicate loads
+    if (imageLoadingRef.current) return;
     imageLoadingRef.current = true;
 
     const img = new Image();
@@ -105,45 +109,44 @@ export default function FreehandAnnotator({
       imageRef.current = img;
       const canvas = canvasRef.current;
       if (canvas && parentContainerRef?.current) {
-        // Set canvas resolution to match container display size
+        // Set canvas to match DISPLAY size (container size)
         const rect = parentContainerRef.current.getBoundingClientRect();
         canvas.width = rect.width;
         canvas.height = rect.height;
+        // Initial redraw
         redrawAll([], []);
       }
-      setImageLoaded(true); // Ready to draw
+      setImageLoaded(true);
     };
     img.onerror = () => {
-      console.error("Failed to load image for freehand drawing");
+      console.error("Failed to load image");
       imageLoadingRef.current = false;
     };
     img.src = imgSrc;
   }, [imgSrc, redrawAll, parentContainerRef]);
-  const getCanvasCoords = useCallback(
+  // Convert mouse/display coordinates to image coordinates
+  const getImageCoords = useCallback(
     (e) => {
       const canvas = canvasRef.current;
       if (!canvas || !imageRef.current) return null;
 
-      // Get container position
-      const containerRect =
-        parentContainerRef?.current?.getBoundingClientRect();
-      if (!containerRect) return null;
+      // Get mouse position relative to canvas (which fills container)
+      const rect = canvas.getBoundingClientRect();
+      const displayX = e.clientX - rect.left;
+      const displayY = e.clientY - rect.top;
 
-      // Get mouse position relative to container
-      const clientX = e.clientX - containerRect.left;
-      const clientY = e.clientY - containerRect.top;
-
-      // Get current transform
+      // Get transform
       const transform = getTransform
         ? getTransform()
         : { offsetX: 0, offsetY: 0, scale: 1 };
 
-      // Convert display coordinates to image coordinates
-      // First undo the transform
-      const imgX = (clientX - transform.offsetX) / transform.scale;
-      const imgY = (clientY - transform.offsetY) / transform.scale;
+      // Reverse transform: displayCoords -> imageCoords
+      // display = transform.offset + imageCoord * transform.scale
+      // imageCoord = (display - transform.offset) / transform.scale
+      const imgX = (displayX - transform.offsetX) / transform.scale;
+      const imgY = (displayY - transform.offsetY) / transform.scale;
 
-      // Check bounds against image size
+      // Bounds check
       if (
         imgX < 0 ||
         imgY < 0 ||
@@ -153,49 +156,47 @@ export default function FreehandAnnotator({
         return null;
       }
 
-      // Return image coordinates
       return [imgX, imgY];
     },
-    [getTransform, parentContainerRef]
+    [getTransform]
   );
 
   // Start drawing
   const handleMouseDown = useCallback(
     (e) => {
       isDrawingRef.current = true;
-      const coords = getCanvasCoords(e);
+      const coords = getImageCoords(e);
       if (coords) {
         currentStrokeRef.current = [coords];
         setCurrentStroke([coords]);
       }
     },
-    [getCanvasCoords]
+    [getImageCoords]
   );
 
-  // Continue drawing - use requestAnimationFrame for smooth rendering
+  // Continue drawing
   const handleMouseMove = useCallback(
     (e) => {
       if (!isDrawingRef.current) return;
 
-      const coords = getCanvasCoords(e);
+      const coords = getImageCoords(e);
       if (!coords) return;
 
       currentStrokeRef.current.push(coords);
       setCurrentStroke((prev) => [...prev, coords]);
 
-      // Debounce redraws with requestAnimationFrame
+      // Redraw on next frame
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
-
       animationFrameRef.current = requestAnimationFrame(() => {
         redrawAll(strokesRef.current, currentStrokeRef.current);
       });
     },
-    [getCanvasCoords, redrawAll]
+    [getImageCoords, redrawAll]
   );
 
-  // Finish stroke - becomes a cell
+  // Finish stroke
   const handleMouseUp = useCallback(() => {
     if (!isDrawingRef.current) return;
     isDrawingRef.current = false;
@@ -309,7 +310,7 @@ export default function FreehandAnnotator({
 
   return (
     <div className="absolute inset-0 z-40" style={{ overflow: "hidden" }}>
-      {/* Canvas - overlay with proper sizing */}
+      {/* Canvas - fills container, renders at display resolution */}
       {imageLoaded && imageRef.current && (
         <canvas
           ref={canvasRef}
@@ -320,16 +321,7 @@ export default function FreehandAnnotator({
           className="absolute inset-0 cursor-crosshair"
           style={{
             display: "block",
-            imageRendering: "crisp-edges",
             pointerEvents: "auto",
-            transformOrigin: "0 0",
-            // Apply same transform as SVG
-            transform: getTransform
-              ? `translate(${getTransform().offsetX}px, ${
-                  getTransform().offsetY
-                }px) scale(${getTransform().scale})`
-              : "none",
-            zIndex: 35, // Above SVG
           }}
         />
       )}
