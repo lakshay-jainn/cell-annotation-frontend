@@ -37,10 +37,12 @@ export default function FreehandAnnotator({
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
-    if (!imageRef.current) return;
 
+    // Clear canvas - keep it transparent
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(imageRef.current, 0, 0);
+
+    // DON'T draw the image - it's already behind this overlay
+    // Just draw the user's strokes on top
 
     // Draw completed strokes
     allStrokes.forEach((stroke, idx) => {
@@ -88,7 +90,7 @@ export default function FreehandAnnotator({
     }
   }, []);
 
-  // Load and cache image once - pre-load before rendering canvas
+  // Load and cache image once - no longer needed but keep ref for size
   useEffect(() => {
     if (imageLoadingRef.current) return; // Prevent duplicate loads
     imageLoadingRef.current = true;
@@ -98,13 +100,12 @@ export default function FreehandAnnotator({
       imageRef.current = img;
       const canvas = canvasRef.current;
       if (canvas) {
+        // Set canvas size to match image for proper coordinate mapping
         canvas.width = img.width;
         canvas.height = img.height;
         redrawAll([], []);
-        setImageLoaded(true); // Signal that image is ready AFTER canvas is drawn
-      } else {
-        setImageLoaded(true); // Still set loaded even if canvas not ready yet
       }
+      setImageLoaded(true); // Ready to draw
     };
     img.onerror = () => {
       console.error("Failed to load image for freehand drawing");
@@ -302,7 +303,7 @@ export default function FreehandAnnotator({
 
   return (
     <div className="absolute inset-0 flex flex-col z-40">
-      {/* Canvas - overlays the annotation view */}
+      {/* Canvas - transparent overlay for drawing only */}
       {imageLoaded && (
         <canvas
           ref={canvasRef}
@@ -310,8 +311,11 @@ export default function FreehandAnnotator({
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
-          className="flex-1 cursor-crosshair"
-          style={{ display: "block" }}
+          className="absolute inset-0 cursor-crosshair"
+          style={{
+            display: "block",
+            imageRendering: "crisp-edges",
+          }}
         />
       )}
       {!imageLoaded && (
@@ -321,7 +325,7 @@ export default function FreehandAnnotator({
       )}
 
       {/* Controls Toolbar */}
-      <div className="bg-white bg-opacity-95 border-t border-gray-300 p-3 flex gap-2 flex-wrap items-center">
+      <div className="bg-white bg-opacity-95 border-t border-gray-300 p-3 flex gap-2 flex-wrap items-center absolute bottom-0 left-0 right-0 z-50">
         <div className="text-xs text-gray-600 flex-1">
           <p className="font-semibold">Cells: {strokes.length}</p>
           {strokes.length > 0 && (
