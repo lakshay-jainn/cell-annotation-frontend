@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import axiosClient from "../../../../services/api/axios/axiosClient";
+import axiosClient from "../../../../services/api/axios/axiosClient.js";
 import Papa from "papaparse";
 import { useParams } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
-import { ROUTES, CELL_TYPES } from "../../../../utils/constants";
+import { ROUTES, CELL_TYPES } from "../../../../utils/constants.js";
 import toast from "react-hot-toast";
 
 // Import extracted components
@@ -18,7 +18,6 @@ import AnnotationView from "./components/AnnotationView.jsx";
 import ImageQualityCheck from "./components/ImageQualityCheck.jsx";
 import LoadingScreen from "./components/LoadingScreen.jsx";
 import CellStateLegend from "./components/CellStateLegend.jsx";
-import FreehandAnnotator from "./components/FreehandAnnotator.jsx";
 
 export default function PointAnnotator() {
   const { patientId } = useParams(); // Changed from jobId to patientId
@@ -62,8 +61,6 @@ export default function PointAnnotator() {
   const [pointSize, setPointSize] = useState(4);
   const [pointColor, setPointColor] = useState("#008000");
   const [loadingAutoSelect, setLoadingAutoSelect] = useState(false);
-  const [freehandMode, setFreehandMode] = useState(false);
-  const [nextSyntheticId, setNextSyntheticId] = useState(-1);
 
   const cellTypeOptions = CELL_TYPES;
 
@@ -211,54 +208,6 @@ export default function PointAnnotator() {
     }
   }, []);
 
-  /* ---------------- Freehand polygon conversion helper ---------------- */
-  const makePredictionFromPolygon = useCallback(
-    (polygonCoords) => {
-      // polygonCoords: array of [x,y] in IMAGE PIXELS
-      const coords = polygonCoords.slice();
-      // Remove duplicate closing point if present
-      if (coords.length > 1) {
-        const first = coords[0];
-        const last = coords[coords.length - 1];
-        if (first[0] === last[0] && first[1] === last[1]) coords.pop();
-      }
-
-      const poly_x = coords.map((p) => (Number.isFinite(p[0]) ? p[0] : 0));
-      const poly_y = coords.map((p) => (Number.isFinite(p[1]) ? p[1] : 0));
-
-      // Compute bbox from polygon
-      const xs = poly_x;
-      const ys = poly_y;
-      const minX = Math.min(...xs);
-      const maxX = Math.max(...xs);
-      const minY = Math.min(...ys);
-      const maxY = Math.max(...ys);
-
-      // Compute centroid (arithmetic mean)
-      const centroidX = xs.reduce((a, b) => a + b, 0) / xs.length;
-      const centroidY = ys.reduce((a, b) => a + b, 0) / ys.length;
-
-      // Use synthetic negative ID
-      const rowIndex = nextSyntheticId;
-      setNextSyntheticId((id) => id - 1);
-
-      return {
-        x0: minX,
-        y0: minY,
-        x1: maxX,
-        y1: maxY,
-        score: 1.0,
-        label: 0,
-        poly_x: poly_x,
-        poly_y: poly_y,
-        centroid: { x: centroidX, y: centroidY },
-        rowIndex,
-        src: "manual_draw",
-      };
-    },
-    [nextSyntheticId]
-  );
-
   /* ---------------- Load next slide for patient ---------------- */
   const loadNextSlide = useCallback(async () => {
     if (!patientId) return;
@@ -361,58 +310,6 @@ export default function PointAnnotator() {
       setShowImageQualityCheck(false);
     }
   };
-
-  /* ---------------- Freehand polygon submission handler ---------------- */
-  const handleFreehandSubmit = useCallback(
-    (polygonGeoJson) => {
-      if (!polygonGeoJson || polygonGeoJson.type !== "Polygon") {
-        toast.error("Invalid polygon data");
-        setFreehandMode(false);
-        return;
-      }
-
-      const ring = polygonGeoJson.coordinates && polygonGeoJson.coordinates[0];
-      if (!ring || ring.length < 3) {
-        toast.error("Draw a valid polygon (minimum 3 points).");
-        setFreehandMode(false);
-        return;
-      }
-
-      // Convert polygon to prediction using safer functional update
-      setCellPredictions((prev) => {
-        const newIndex = prev.length;
-        const newPred = makePredictionFromPolygon(ring);
-        const updated = [...prev, newPred];
-
-        // Update selected cells
-        setUserSelectedCells((s) => {
-          const next = new Set(s);
-          next.add(newIndex);
-          return next;
-        });
-
-        // Update annotated points
-        setAnnotatedPoints((s) => [
-          ...s,
-          {
-            x: newPred.centroid.x,
-            y: newPred.centroid.y,
-            src: "manual_draw",
-            score: newPred.score,
-            cellIndex: newIndex,
-          },
-        ]);
-
-        return updated;
-      });
-
-      setFreehandMode(false);
-      toast.success(
-        "Freehand polygon added! Remember to select a cell type and save annotation."
-      );
-    },
-    [makePredictionFromPolygon]
-  );
 
   /* ---------------- Transform helpers ---------------- */
   const getTransform = useCallback(() => {
@@ -1241,56 +1138,11 @@ export default function PointAnnotator() {
                   selectedCells={selectedCells}
                   annotatedCells={annotatedCells}
                 />
-
-                {/* Freehand drawing toggle */}
-                <div className="bg-white p-4 rounded-lg border border-gray-200">
-                  <label className="flex items-center gap-2 cursor-pointer mb-2">
-                    <input
-                      type="checkbox"
-                      checked={freehandMode}
-                      onChange={() => setFreehandMode((v) => !v)}
-                      className="w-4 h-4 rounded"
-                    />
-                    <span className="text-sm font-medium text-gray-900">
-                      Freehand Draw
-                    </span>
-                  </label>
-                  <p className="text-xs text-gray-500">
-                    Toggle to draw freehand polygons. After drawing, submit to
-                    append to current predictions.
-                  </p>
-                </div>
               </>
             )}
           </div>
         </div>
       </div>
-
-      {/* Freehand Annotator Overlay */}
-      {freehandMode && imageUrl && (
-        <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex flex-col">
-          <div className="bg-white border-b border-gray-200 px-4 py-2 flex justify-between items-center">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Freehand Polygon Drawing
-            </h3>
-            <button
-              onClick={() => setFreehandMode(false)}
-              className="text-gray-500 hover:text-gray-700 text-xl"
-              aria-label="Close"
-            >
-              ✕
-            </button>
-          </div>
-          <div className="flex-1 overflow-hidden">
-            <FreehandAnnotator
-              imgSrc={imageUrl}
-              onSubmit={handleFreehandSubmit}
-              minPoints={3}
-              simplifyEpsilon={2}
-            />
-          </div>
-        </div>
-      )}
 
       <ImageQualityCheck
         showImageQualityCheck={showImageQualityCheck}
