@@ -5,6 +5,9 @@ import axiosClient from "../../../../services/api/axios/axiosClient";
 import toast from "react-hot-toast";
 
 const PatientTable = ({ patients, loading, onPatientClick }) => {
+  // Log patients to check available fields including uploaded date
+  console.log("Patients data:", patients);
+
   const [downloadingReports, setDownloadingReports] = useState(new Set());
 
   const handleDownloadReport = async (patient) => {
@@ -85,6 +88,9 @@ const PatientTable = ({ patients, loading, onPatientClick }) => {
               Patient ID
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+              Uploaded At
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
               Progress
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
@@ -122,6 +128,17 @@ const PatientTable = ({ patients, loading, onPatientClick }) => {
                     {`...${patient.patient_id.slice(-5)}`}
                   </div>
                 </div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
+                {patient.uploaded_at || patient.created_at
+                  ? new Date(
+                      patient.uploaded_at || patient.created_at
+                    ).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })
+                  : "N/A"}
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <div className="flex items-center">
