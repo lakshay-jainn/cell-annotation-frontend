@@ -41,7 +41,6 @@ export default function PathiologistPage() {
     } catch (err) {
       console.error("Error fetching patients:", err);
       if (retryCount < maxRetries) {
-        toast.error(`Retrying... (${retryCount + 1}/${maxRetries})`);
         setTimeout(() => fetchPatients(page, retryCount + 1), 1500);
         return;
       }
