@@ -74,9 +74,9 @@ export default function PatientTable({
                 <th className="px-6 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider border-b border-slate-300">
                   Patient ID
                 </th>
-                <th className="px-6 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider border-b border-slate-300">
+                {/* <th className="px-6 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider border-b border-slate-300">
                   Uploaded At
-                </th>
+                </th> */}
                 <th className="px-6 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider border-b border-slate-300">
                   Images
                 </th>
@@ -94,7 +94,7 @@ export default function PatientTable({
                   <td className="px-6 py-4 text-center border-b border-slate-200 text-sm font-medium text-blue-700 break-all max-w-xs">
                     {patient.user_typed_id}
                   </td>
-                  <td className="px-6 py-4 text-center border-b border-slate-200 text-sm text-slate-900">
+                  {/* <td className="px-6 py-4 text-center border-b border-slate-200 text-sm text-slate-900">
                     {patient.uploaded_at || patient.created_at
                       ? new Date(
                           patient.uploaded_at || patient.created_at
@@ -104,7 +104,7 @@ export default function PatientTable({
                           year: "numeric",
                         })
                       : "N/A"}
-                  </td>
+                  </td> */}
                   <td className="px-6 py-4 text-center border-b border-slate-200 text-sm text-slate-900">
                     {patient.total_samples}
                   </td>
