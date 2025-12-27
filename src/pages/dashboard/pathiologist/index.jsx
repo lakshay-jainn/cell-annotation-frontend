@@ -11,15 +11,18 @@ export default function PathiologistPage() {
   const navigate = useNavigate();
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalPatients, setTotalPatients] = useState(0);
   const [completedCount, setCompletedCount] = useState(0);
   const { name, location, hospital, Logout } = useGlobalAuth();
 
-  const fetchPatients = async (page) => {
+  const fetchPatients = async (page, retryCount = 0) => {
+    const maxRetries = 3;
     try {
       setLoading(true);
+      setError(false);
       const response = await axiosClient.get(`/patients?page=${page}`);
       console.log(response);
       const data = response.data;
@@ -35,12 +38,22 @@ export default function PathiologistPage() {
         (patient) => patient.annotation_completed
       ).length;
       setCompletedCount(completed);
-    } catch (error) {
-      console.error("Error fetching patients:", error);
+    } catch (err) {
+      console.error("Error fetching patients:", err);
+      if (retryCount < maxRetries) {
+        toast.error(`Retrying... (${retryCount + 1}/${maxRetries})`);
+        setTimeout(() => fetchPatients(page, retryCount + 1), 1500);
+        return;
+      }
+      setError(true);
       toast.error("Failed to load patients. Please try again.");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRetry = () => {
+    fetchPatients(currentPage);
   };
 
   useEffect(() => {
@@ -140,7 +153,9 @@ export default function PathiologistPage() {
           <PatientTable
             patients={patients}
             loading={loading}
+            error={error}
             onPatientClick={handlePatientClick}
+            onRetry={handleRetry}
           />
 
           <Pagination

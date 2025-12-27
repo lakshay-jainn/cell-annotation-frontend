@@ -38,7 +38,7 @@ export default function Patients() {
   const [formText, setFormText] = useState("");
   const [formLoading, setFormLoading] = useState(false);
 
-  const { patients, totalPages, totalPatients, loading, error } =
+  const { patients, totalPages, totalPatients, loading, error, retry } =
     useFetchPatientsPulmo(currentPage);
 
   // Sync patients from API to local state for UI updates
@@ -94,6 +94,7 @@ export default function Patients() {
         error={error}
         onUploadReport={handleUploadReport}
         onDownloadReport={handleDownloadReport}
+        onRetry={retry}
       />
       <Pagination
         currentPage={currentPage}
