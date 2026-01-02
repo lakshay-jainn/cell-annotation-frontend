@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import axiosClient from "../services/api/axios/axiosClient";
 import toast from "react-hot-toast";
+import { executeWithRetry } from "../utils/retryHelper";
 
 export default function useFetchPatientsPulmo(currentPage) {
   const [loading, setLoading] = useState(true);
@@ -9,13 +10,13 @@ export default function useFetchPatientsPulmo(currentPage) {
   const [totalPages, setTotalPages] = useState(1);
   const [totalPatients, setTotalPatients] = useState(0);
 
-  const fetchPatients = useCallback(async (page, retryCount = 0) => {
-    const maxRetries = 3;
+  const fetchPatients = useCallback(async (page) => {
     try {
       setLoading(true);
       setError(null);
-      const response = await axiosClient.get(
-        `/pulmo/patients?page=${page}&per_page=10`
+      const response = await executeWithRetry(
+        () => axiosClient.get(`/pulmo/patients?page=${page}&per_page=10`),
+        { maxRetries: 3, delayMs: 1500 }
       );
       console.log(response);
       const data = response.data;
@@ -34,10 +35,6 @@ export default function useFetchPatientsPulmo(currentPage) {
       setTotalPatients(data.total);
     } catch (err) {
       console.error("Error fetching patients:", err);
-      if (retryCount < maxRetries) {
-        setTimeout(() => fetchPatients(page, retryCount + 1), 1500);
-        return;
-      }
       setError("Failed to load patients");
       toast.error("Failed to load patients. Please try again.");
     } finally {

@@ -3,6 +3,7 @@ import FormField from "../../../../../components/ui/FormField";
 import SubmitButton from "../../../../../components/ui/SubmitButton";
 import axiosClient from "../../../../../services/api/axios/axiosClient";
 import toast from "react-hot-toast";
+import { executeWithRetry } from "../../../../../utils/retryHelper";
 
 const FinalAssessment = ({ patientId, onComplete }) => {
   const [formData, setFormData] = useState({
@@ -20,8 +21,9 @@ const FinalAssessment = ({ patientId, onComplete }) => {
   useEffect(() => {
     const fetchAnnotationSummary = async () => {
       try {
-        const response = await axiosClient.get(
-          `/patient/${patientId}/annotation-summary`
+        const response = await executeWithRetry(
+          () => axiosClient.get(`/patient/${patientId}/annotation-summary`),
+          { maxRetries: 3, delayMs: 1500 }
         );
 
         // Sort slides by annotation timestamp to maintain annotation order
@@ -71,11 +73,12 @@ const FinalAssessment = ({ patientId, onComplete }) => {
 
   const handleDownloadReport = async () => {
     try {
-      const response = await axiosClient.get(
-        `/patient/${patientId}/download-report`,
-        {
-          responseType: "blob",
-        }
+      const response = await executeWithRetry(
+        () =>
+          axiosClient.get(`/patient/${patientId}/download-report`, {
+            responseType: "blob",
+          }),
+        { maxRetries: 3, delayMs: 1500 }
       );
 
       // Create blob link to download

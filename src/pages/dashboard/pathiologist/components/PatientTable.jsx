@@ -3,6 +3,7 @@ import StatusBadge from "../../../../components/ui/StatusBadge.jsx";
 import Papa from "papaparse";
 import axiosClient from "../../../../services/api/axios/axiosClient";
 import toast from "react-hot-toast";
+import { executeWithRetry } from "../../../../utils/retryHelper";
 
 const PatientTable = ({
   patients,
@@ -24,11 +25,12 @@ const PatientTable = ({
     setDownloadingReports((prev) => new Set(prev).add(patient.patient_id));
 
     try {
-      const response = await axiosClient.get(
-        `/patient/${patient.patient_id}/download-report`,
-        {
-          responseType: "blob",
-        }
+      const response = await executeWithRetry(
+        () =>
+          axiosClient.get(`/patient/${patient.patient_id}/download-report`, {
+            responseType: "blob",
+          }),
+        { maxRetries: 3, delayMs: 1500 }
       );
 
       // Create blob link to download

@@ -5,6 +5,7 @@ import { useParams } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import { ROUTES, CELL_TYPES } from "../../../../utils/constants";
 import toast from "react-hot-toast";
+import { executeWithRetry } from "../../../../utils/retryHelper";
 
 // Import extracted components
 import CellTypeAnnotation from "./components/CellTypeAnnotation.jsx";
@@ -266,8 +267,9 @@ export default function PointAnnotator() {
     setLoading(true);
     try {
       console.log(" Loading next slide for patient:", patientId);
-      const response = await axiosClient.get(
-        `/patient/${patientId}/next-slide`
+      const response = await executeWithRetry(
+        () => axiosClient.get(`/patient/${patientId}/next-slide`),
+        { maxRetries: 3, delayMs: 1500 }
       );
       const slideData = response.data;
 
@@ -281,7 +283,10 @@ export default function PointAnnotator() {
         img.src = slideData.image.url;
       });
 
-      const csvResponse = await axiosClient.get(slideData.csv.url);
+      const csvResponse = await executeWithRetry(
+        () => axiosClient.get(slideData.csv.url),
+        { maxRetries: 3, delayMs: 1500 }
+      );
       const csvText = csvResponse.data;
       const predictions = parseCsvData(csvText);
 
@@ -325,7 +330,10 @@ export default function PointAnnotator() {
     if (!patientId) return;
 
     try {
-      const response = await axiosClient.get(`/patient/${patientId}/samples`);
+      const response = await executeWithRetry(
+        () => axiosClient.get(`/patient/${patientId}/samples`),
+        { maxRetries: 3, delayMs: 1500 }
+      );
       setPatientInfo(response.data);
     } catch (error) {
       console.error(" Failed to load patient info:", error);
@@ -346,11 +354,15 @@ export default function PointAnnotator() {
       formData.append("cellTypeCounts", JSON.stringify({}));
 
       try {
-        await axiosClient.post("/annotate", formData, {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        });
+        await executeWithRetry(
+          () =>
+            axiosClient.post("/annotate", formData, {
+              headers: {
+                "Content-Type": "multipart/form-data",
+              },
+            }),
+          { maxRetries: 3, delayMs: 1500 }
+        );
         // Load next slide
         loadNextSlide();
       } catch (error) {
@@ -700,14 +712,14 @@ export default function PointAnnotator() {
         formData.append("s3_object_key", currentSlide.sample.s3_object_key); // Use S3 key instead of image blob
         formData.append("mode", mode); // Pass the mode to backend
         formData.append("strictness", strictness); // Pass the strictness level to backend        // Call backend API with FormData
-        const response = await axiosClient.post(
-          "/dynamic-cells/detect-from-selected",
-          formData,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-          }
+        const response = await executeWithRetry(
+          () =>
+            axiosClient.post("/dynamic-cells/detect-from-selected", formData, {
+              headers: {
+                "Content-Type": "multipart/form-data",
+              },
+            }),
+          { maxRetries: 3, delayMs: 1500 }
         );
 
         // Parse the returned CSV data containing additional polygons
@@ -1047,11 +1059,15 @@ export default function PointAnnotator() {
       formData.append("image_quality", true);
       formData.append("cellTypeCounts", JSON.stringify(cellTypeCounts));
 
-      await axiosClient.post("/annotate", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
+      await executeWithRetry(
+        () =>
+          axiosClient.post("/annotate", formData, {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          }),
+        { maxRetries: 3, delayMs: 1500 }
+      );
 
       toast.success(
         `Successfully submitted ${annotatedCells.length} cell annotations.`
@@ -1068,7 +1084,11 @@ export default function PointAnnotator() {
   /* ---------------- Handle Final Patient Assessment ---------------- */
   const handleFinalPatientAssessment = async (assessmentData) => {
     try {
-      await axiosClient.post(`/patient/${patientId}/complete`, assessmentData);
+      await executeWithRetry(
+        () =>
+          axiosClient.post(`/patient/${patientId}/complete`, assessmentData),
+        { maxRetries: 3, delayMs: 1500 }
+      );
       toast.success("Patient annotation completed successfully!");
       navigate(ROUTES.PATHOLOGIST, { replace: true });
     } catch (error) {

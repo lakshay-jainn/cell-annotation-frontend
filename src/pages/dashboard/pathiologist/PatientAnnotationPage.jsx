@@ -9,6 +9,7 @@ import LoadingScreen from "../annotation/components/LoadingScreen";
 import ImageQualityCheck from "../annotation/components/ImageQualityCheck";
 import AnnotationView from "../annotation/components/AnnotationView";
 import FinalAssessment from "../annotation/components/FinalAssessment";
+import { executeWithRetry } from "../../../../utils/retryHelper";
 
 export default function PatientAnnotationPage() {
   const { patientId } = useParams();
@@ -29,8 +30,9 @@ export default function PatientAnnotationPage() {
   const fetchNextSlide = async () => {
     try {
       setLoading(true);
-      const response = await axiosClient.get(
-        `/patient/${patientId}/next-slide`
+      const response = await executeWithRetry(
+        () => axiosClient.get(`/patient/${patientId}/next-slide`),
+        { maxRetries: 3, delayMs: 1500 }
       );
       setCurrentSlide(response.data);
       setCurrentStep("quality-check");
@@ -51,7 +53,10 @@ export default function PatientAnnotationPage() {
   // Fetch patient info
   const fetchPatient = async () => {
     try {
-      const response = await axiosClient.get(`/patient/${patientId}/samples`);
+      const response = await executeWithRetry(
+        () => axiosClient.get(`/patient/${patientId}/samples`),
+        { maxRetries: 3, delayMs: 1500 }
+      );
       setPatient(response.data);
     } catch (error) {
       console.error("Error fetching patient:", error);
@@ -99,9 +104,13 @@ export default function PatientAnnotationPage() {
           formData.append("annotations_csv", annotationData.csvFile);
         }
 
-        await axiosClient.post("/annotate", formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
+        await executeWithRetry(
+          () =>
+            axiosClient.post("/annotate", formData, {
+              headers: { "Content-Type": "multipart/form-data" },
+            }),
+          { maxRetries: 3, delayMs: 1500 }
+        );
 
         toast.success("Slide annotation saved successfully");
       } catch (error) {
@@ -117,9 +126,13 @@ export default function PatientAnnotationPage() {
         formData.append("image_quality", "false");
         formData.append("cellTypeCounts", JSON.stringify({}));
 
-        await axiosClient.post("/annotate", formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
+        await executeWithRetry(
+          () =>
+            axiosClient.post("/annotate", formData, {
+              headers: { "Content-Type": "multipart/form-data" },
+            }),
+          { maxRetries: 3, delayMs: 1500 }
+        );
 
         toast.success("Slide marked as poor quality");
       } catch (error) {
@@ -135,7 +148,11 @@ export default function PatientAnnotationPage() {
 
   const handleFinalAssessmentComplete = async (assessmentData) => {
     try {
-      await axiosClient.post(`/patient/${patientId}/complete`, assessmentData);
+      await executeWithRetry(
+        () =>
+          axiosClient.post(`/patient/${patientId}/complete`, assessmentData),
+        { maxRetries: 3, delayMs: 1500 }
+      );
       toast.success("Patient annotation completed successfully!");
       navigate("/dashboard/pathologist");
     } catch (error) {

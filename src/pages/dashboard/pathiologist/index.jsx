@@ -7,6 +7,7 @@ import UserInfoCard from "../../../components/ui/UserInfoCard.jsx";
 import PatientTable from "./components/PatientTable";
 import Pagination from "../../../components/ui/Pagination.jsx";
 import { toast } from "react-hot-toast";
+import { executeWithRetry } from "../../../utils/retryHelper";
 export default function PathiologistPage() {
   const navigate = useNavigate();
   const [patients, setPatients] = useState([]);
@@ -18,12 +19,14 @@ export default function PathiologistPage() {
   const [completedCount, setCompletedCount] = useState(0);
   const { name, location, hospital, Logout } = useGlobalAuth();
 
-  const fetchPatients = async (page, retryCount = 0) => {
-    const maxRetries = 3;
+  const fetchPatients = async (page) => {
     try {
       setLoading(true);
       setError(false);
-      const response = await axiosClient.get(`/patients?page=${page}`);
+      const response = await executeWithRetry(
+        () => axiosClient.get(`/patients?page=${page}`),
+        { maxRetries: 3, delayMs: 1500 }
+      );
       console.log(response);
       const data = response.data;
 
@@ -40,10 +43,6 @@ export default function PathiologistPage() {
       setCompletedCount(completed);
     } catch (err) {
       console.error("Error fetching patients:", err);
-      if (retryCount < maxRetries) {
-        setTimeout(() => fetchPatients(page, retryCount + 1), 1500);
-        return;
-      }
       setError(true);
       toast.error("Failed to load patients. Please try again.");
     } finally {

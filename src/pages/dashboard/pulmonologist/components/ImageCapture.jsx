@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import toast from "react-hot-toast";
 import axiosClient from "../../../../services/api/axios/axiosClient";
 import { API_ENDPOINTS } from "../../../../utils/constants";
+import { executeWithRetry } from "../../../../utils/retryHelper";
 
 const ImageCapture = ({ sampleData, onNewSlide, onNewNode, onNewPatient }) => {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -48,14 +49,14 @@ const ImageCapture = ({ sampleData, onNewSlide, onNewNode, onNewPatient }) => {
     // }
 
     try {
-      const response = await axiosClient.post(
-        API_ENDPOINTS.UPLOAD_IMAGE,
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
+      const response = await executeWithRetry(
+        () =>
+          axiosClient.post(API_ENDPOINTS.UPLOAD_IMAGE, formData, {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          }),
+        { maxRetries: 3, delayMs: 1500 }
       );
 
       toast.success("Image uploaded successfully!");
